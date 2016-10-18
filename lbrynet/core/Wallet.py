@@ -1131,7 +1131,6 @@ class LBRYumWallet(Wallet):
         self._config = config
         self.network = None
         self.wallet = None
-        self.cmd_runner = None
         self.first_run = False
         self.printed_retrieving_headers = False
         self._start_check = None
@@ -1172,7 +1171,6 @@ class LBRYumWallet(Wallet):
         d.addCallback(lambda _: self._start_check.start(.1))
         d.addCallback(lambda _: network_start_d)
         d.addCallback(lambda _: self._load_wallet())
-        d.addCallback(lambda _: self._get_cmd_runner())
         return d
 
     def _stop(self):
@@ -1268,15 +1266,16 @@ class LBRYumWallet(Wallet):
         d.addCallback(lambda _: blockchain_caught_d)
         return d
 
-    def _get_cmd_runner(self):
-        self.cmd_runner = Commands(self.config, self.wallet, self.network)
+    def _run_lbryum_cmd(self, cmd_name, password = None, *args):
+        cmd = known_commands[cmd_name]
+        commands = Commands(self.config, self.wallet, self.network, password = password)
+        func = getattr(commands, cmd.name)
+        return threads.deferToThread(func, *args)
 
     def get_balance(self):
-        cmd = known_commands['getbalance']
-        func = getattr(self.cmd_runner, cmd.name)
         accounts = None
         exclude_claimtrietx = True
-        d = threads.deferToThread(func, accounts, exclude_claimtrietx)
+        d = self._run_lbryum_cmd('getbalance', None, accounts, exclude_claimtrietx)
         d.addCallback(lambda result: Decimal(result['confirmed']) + Decimal(result.get('unconfirmed', 0.0)))
         return d
 
@@ -1286,9 +1285,7 @@ class LBRYumWallet(Wallet):
         return d
 
     def get_block(self, blockhash):
-        cmd = known_commands['getblock']
-        func = getattr(self.cmd_runner, cmd.name)
-        return threads.deferToThread(func, blockhash)
+        return self._run_lbryum_cmd('getblock', None, blockhash)
 
     def get_most_recent_blocktime(self):
         header = self.network.get_header(self.network.get_local_height())
@@ -1306,17 +1303,13 @@ class LBRYumWallet(Wallet):
         return d
 
     def get_name_claims(self):
-        cmd = known_commands['getnameclaims']
-        func = getattr(self.cmd_runner, cmd.name)
-        return threads.deferToThread(func)
+        return self._run_lbryum_cmd('getnameclaims', None)
 
     def _check_first_run(self):
         return defer.succeed(self.first_run)
 
     def _get_raw_tx(self, txid):
-        cmd = known_commands['gettransaction']
-        func = getattr(self.cmd_runner, cmd.name)
-        return threads.deferToThread(func, txid)
+        return self._run_lbryum_cmd('gettransaction', None, txid)
 
     def _get_transaction(self, txid):
         def _add_confirms(tx):
@@ -1329,23 +1322,17 @@ class LBRYumWallet(Wallet):
         return d
 
     def _send_name_claim(self, name, val, amount):
-        cmd = known_commands['claim']
-        func = getattr(self.cmd_runner, cmd.name)
-        return threads.deferToThread(func, name, json.dumps(val), amount)
+        return self._run_lbryum_cmd('claim', None, name, json.dumps(val), amount)
 
     def _get_claims_for_name(self, name):
-        cmd = known_commands['getclaimsforname']
-        func = getattr(self.cmd_runner, cmd.name)
-        return threads.deferToThread(func, name)
+        return self._run_lbryum_cmd('getclaimsforname', None, name)
 
     def _send_name_claim_update(self, name, claim_id, claim_outpoint, value, amount):
         metadata = json.dumps(value)
-        log.debug("Update %s %d %f %s %s '%s'", claim_outpoint['txid'], claim_outpoint['nout'], 
+        log.debug("Update %s %d %f %s %s '%s'", claim_outpoint['txid'], claim_outpoint['nout'],
                                                      amount, name, claim_id, metadata)
-        cmd = known_commands['update']
-        func = getattr(self.cmd_runner, cmd.name)
-        return threads.deferToThread(func, claim_outpoint['txid'], claim_outpoint['nout'], name, claim_id, metadata, amount)
-
+        return self._run_lbryum_cmd('update', None, claim_outpoint['txid'], claim_outpoint['nout'],
+                                    name, claim_id, metadata, amount)
 
     def _get_decoded_tx(self, raw_tx):
         tx = Transaction(raw_tx)
@@ -1359,25 +1346,17 @@ class LBRYumWallet(Wallet):
 
     def _abandon_claim(self, claim_outpoint):
         log.debug("Abandon %s %s" % (claim_outpoint['txid'], claim_outpoint['nout']))
-        cmd = known_commands['abandon']
-        func = getattr(self.cmd_runner, cmd.name)
-        d = threads.deferToThread(func, claim_outpoint['txid'], claim_outpoint['nout'])
-        return d
+        return self._run_lbryum_cmd('abandon', None, claim_outpoint['txid'], claim_outpoint['nout'])
 
     def _support_claim(self, name, claim_id, amount):
         log.debug("Support %s %s %f" % (name, claim_id, amount))
-        cmd = known_commands['support']
-        func = getattr(self.cmd_runner, cmd.name)
-        d = threads.deferToThread(func, name, claim_id, amount)
-        return d
+        return self._run_lbryum_cmd('support', None, name, claim_id, amount)
 
     def _broadcast_transaction(self, raw_tx):
         def _log_tx(r):
             log.debug("Broadcast tx: %s", r)
             return r
-        cmd = known_commands['broadcast']
-        func = getattr(self.cmd_runner, cmd.name)
-        d = threads.deferToThread(func, raw_tx)
+        d = self._run_lbryum_cmd('broadcast', None, raw_tx)
         d.addCallback(_log_tx)
         d.addCallback(
             lambda r: r if len(r) == 64 else defer.fail(Exception("Transaction rejected")))
@@ -1386,42 +1365,28 @@ class LBRYumWallet(Wallet):
 
     def _do_send_many(self, payments_to_send):
         log.warning("Doing send many. payments to send: %s", str(payments_to_send))
-        cmd = known_commands['paytomanyandsend']
-        func = getattr(self.cmd_runner, cmd.name)
-        return threads.deferToThread(func, payments_to_send.iteritems())
+        return self._run_lbryum_cmd('paytomanyandsend', payments_to_send.iteritems())
 
     def _get_value_for_name(self, name):
-        cmd = known_commands['getvalueforname']
-        func = getattr(self.cmd_runner, cmd.name)
-        return threads.deferToThread(func, name)
+        return self._run_lbryum_cmd('getvalueforname', None, name)
 
     def get_claims_from_tx(self, txid):
-        cmd = known_commands['getclaimsfromtx']
-        func = getattr(self.cmd_runner, cmd.name)
-        return threads.deferToThread(func, txid)
+        return self._run_lbryum_cmd('getclaimsfromtx', None, txid)
 
     def _get_balance_for_address(self, address):
         return defer.succeed(Decimal(self.wallet.get_addr_received(address))/COIN)
 
     def get_nametrie(self):
-        cmd = known_commands['getclaimtrie']
-        func = getattr(self.cmd_runner, cmd.name)
-        return threads.deferToThread(func)
+        return self._run_lbryum_cmd('getclaimtrie')
 
     def _get_history(self):
-        cmd = known_commands['history']
-        func = getattr(self.cmd_runner, cmd.name)
-        return threads.deferToThread(func)
+        return self._run_lbryum_cmd('history')
 
     def _address_is_mine(self, address):
-        cmd = known_commands['ismine']
-        func = getattr(self.cmd_runner, cmd.name)
-        return threads.deferToThread(func, address)
+        return self._run_lbryum_cmd('ismine', None, address)
 
     def get_pub_keys(self, wallet):
-        cmd = known_commands['getpubkeys']
-        func = getattr(self.cmd_runner, cmd.name)
-        return threads.deferToThread(func, wallet)
+        return self._run_lbryum_cmd('getpubkeys', None, wallet)
 
     def _save_wallet(self, val):
         d = threads.deferToThread(self.wallet.storage.write)
