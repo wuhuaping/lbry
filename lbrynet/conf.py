@@ -259,11 +259,11 @@ class Config(DefaultSettings):
 
     @property
     def ORIGIN(self):
-        return "http://%s:%i" % (DEFAULT_SETTINGS.API_INTERFACE, self.api_port)
+        return "http://%s:%i" % (self.API_INTERFACE, self.api_port)
 
     @property
     def REFERER(self):
-        return "http://%s:%i/" % (DEFAULT_SETTINGS.API_INTERFACE, self.api_port)
+        return "http://%s:%i/" % (self.API_INTERFACE, self.api_port)
 
     @property
     def API_CONNECTION_STRING(self):
