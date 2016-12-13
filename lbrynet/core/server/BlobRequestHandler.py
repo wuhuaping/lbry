@@ -5,9 +5,9 @@ from twisted.protocols.basic import FileSender
 from twisted.python.failure import Failure
 from zope.interface import implements
 
-
 from lbrynet.core.Offer import Offer
 from lbrynet import analytics
+from lbrynet.core import Wallet
 from lbrynet.interfaces import IQueryHandlerFactory, IQueryHandler, IBlobSender
 
 
@@ -66,7 +66,7 @@ class BlobRequestHandler(object):
 
     def handle_queries(self, queries):
         response = defer.succeed({})
-        log.debug("Handle query: %s", str(queries))
+        log.debug("Handle query: %s", queries)
 
         if self.AVAILABILITY_QUERY in queries:
             self._blobs_requested = queries[self.AVAILABILITY_QUERY]
@@ -185,6 +185,10 @@ class BlobRequestHandler(object):
         d = self.blob_manager.completed_blobs(requested_blobs)
         return d
 
+    def get_payment_amount(self):
+        # TODO: explain why 2**20
+        return self.currently_uploading.length * 1.0 * self.blob_data_payment_rate / 2**20
+
     def send_file(self, consumer):
 
         def _send_file():
@@ -211,23 +215,24 @@ class BlobRequestHandler(object):
             return d
 
         def set_expected_payment():
-            log.debug("Setting expected payment")
             if self.blob_bytes_uploaded != 0 and self.blob_data_payment_rate is not None:
-                # TODO: explain why 2**20
-                self.wallet.add_expected_payment(self.peer,
-                                                 self.currently_uploading.length * 1.0 *
-                                                 self.blob_data_payment_rate / 2**20)
+                amount = self.get_payment_amount()
+                if amount < Wallet.DUST:
+                    return None
+                log.debug("Setting expected payment for %s", amount)
+                self.wallet.add_expected_payment(self.peer, amount)
                 self.blob_bytes_uploaded = 0
             self.peer.update_stats('blobs_uploaded', 1)
             return None
 
         def set_not_uploading(reason=None):
+            log.debug('Done uploading')
             if self.currently_uploading is not None:
                 self.currently_uploading.close_read_handle(self.read_handle)
                 self.read_handle = None
                 self.currently_uploading = None
             self.file_sender = None
             if reason is not None and isinstance(reason, Failure):
-                log.warning("Upload has failed. Reason: %s", reason.getErrorMessage())
+                log.warning("Upload has failed. Reason: %s - %s", reason, reason.getErrorMessage())
 
         return _send_file()

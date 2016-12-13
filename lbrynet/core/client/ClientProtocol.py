@@ -176,7 +176,10 @@ class ClientProtocol(Protocol):
 
     def _handle_response(self, response):
         ds = []
-        log.debug("Handling a response. Current expected responses: %s", self._response_deferreds)
+        log.debug(
+            "Handling a response: %s. Current expected responses: %s",
+            response, self._response_deferreds.keys()
+        )
         for key, val in response.items():
             if key in self._response_deferreds:
                 d = self._response_deferreds[key]

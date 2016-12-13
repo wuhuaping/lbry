@@ -110,7 +110,11 @@ class ServerRequestHandler(object):
         d = self.handle_request(msg)
         if self.blob_sender:
             d.addCallback(lambda _: self.blob_sender.send_blob_if_requested(self))
-        d.addCallbacks(lambda _: self.finished_response(), self.request_failure_handler)
+        d.addCallbacks(
+            lambda _: self.finished_response(),
+            errback=log.fail(self.stopProducing),
+            errbackArgs="An error occurred handling a request"
+        )
 
 
     ######### IRequestHandler #########
@@ -122,11 +126,6 @@ class ServerRequestHandler(object):
         self.blob_sender = blob_sender
 
     #response handling
-
-    def request_failure_handler(self, err):
-        log.warning("An error occurred handling a request. Error: %s", err.getErrorMessage())
-        self.stopProducing()
-        return err
 
     def finished_response(self):
         self.request_received = False
@@ -141,8 +140,7 @@ class ServerRequestHandler(object):
         return True
 
     def handle_request(self, msg):
-        log.debug("Handling a request")
-        log.debug(str(msg))
+        log.debug("Handling a request: %s", msg)
 
         def create_response_message(results):
             response = {}
@@ -152,14 +150,8 @@ class ServerRequestHandler(object):
                 else:
                     # result is a Failure
                     return result
-            log.debug("Finished making the response message. Response: %s", str(response))
+            log.debug("Finished making the response message. Response: %s", response)
             return response
-
-        def log_errors(err):
-            log.warning(
-                "An error occurred handling a client request. Error message: %s",
-                err.getErrorMessage())
-            return err
 
         def send_response(response):
             self.send_response(response)
@@ -168,8 +160,12 @@ class ServerRequestHandler(object):
         ds = []
         for query_handler, query_identifiers in self.query_handlers.iteritems():
             queries = {q_i: msg[q_i] for q_i in query_identifiers if q_i in msg}
+            if not queries:
+                # if a msg doesn't have any query identifiers relevant to this
+                # query handler than we shouldn't process it
+                continue
             d = query_handler.handle_queries(queries)
-            d.addErrback(log_errors)
+            d.addErrback(log.fail(), "Handler %s failed to process %s.", query_handler, queries)
             ds.append(d)
 
         dl = defer.DeferredList(ds)
