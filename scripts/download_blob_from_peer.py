@@ -23,6 +23,7 @@ from lbrynet.core.client import ConnectionManager
 
 
 log = logging.getLogger()
+SUCCESS = False
 
 
 def main(args=None):
@@ -46,14 +47,23 @@ def main(args=None):
     downloader = SingleBlobDownloader()
     connection_manager = ConnectionManager.ConnectionManager(
         downloader, rate_limiter, [requester], [wallet.get_info_exchanger()])
+    reactor.callLater(10, reactor.stop)
     d = connection_manager.start()
+    d.addErrback(log_support.failure, 'Something bad happened: %s')
     reactor.run()
+
+    if SUCCESS:
+        sys.exit(0)
+    else:
+        sys.exit(1)
 
 
 class MyBlobManager(BlobManager.BlobManager):
     def blob_completed(self, blob):
+        global SUCCESS
         log.info('Blob has been downloaded, we can stop')
         # this feels pretty hacky, but its as good of a stopping point as any
+        SUCCESS = True
         reactor.stop()
 
 
