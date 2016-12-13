@@ -45,7 +45,7 @@ def main(args=None):
     rate_limiter = RateLimiter.DummyRateLimiter()
     downloader = SingleBlobDownloader()
     connection_manager = ConnectionManager.ConnectionManager(
-        downloader, rate_limiter, [requester], [])
+        downloader, rate_limiter, [requester], [wallet.get_info_exchanger()])
     d = connection_manager.start()
     reactor.run()
 
@@ -94,7 +94,7 @@ class DumbPaymentRateManager(object):
         return False
 
     def get_rate_blob_data(self, *args):
-        return 0
+        return 0.0
 
     def record_offer_reply(self, peer, offer):
         pass
