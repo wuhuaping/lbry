@@ -15,7 +15,6 @@ from lbrynet.core import BlobManager
 from lbrynet.core import HashAnnouncer
 from lbrynet.core import HashBlob
 from lbrynet.core import RateLimiter
-from lbrynet.core import PaymentRateManager
 from lbrynet.core import Peer
 from lbrynet.core import Wallet
 from lbrynet.core.client import BlobRequester
