@@ -26,7 +26,14 @@ class ClientProtocol(Protocol):
 
     ######### Protocol #########
 
+    def __repr__(self):
+        if self.peer:
+            return '<ClientProtocol connected to {}>'.format(self.peer)
+        else:
+            return '<ClientProtocol disconnected>'
+
     def connectionMade(self):
+        log.debug('Connection Made to %s', self.factory.peer)
         self._connection_manager = self.factory.connection_manager
         self._rate_limiter = self.factory.rate_limiter
         self.peer = self.factory.peer
@@ -176,7 +183,10 @@ class ClientProtocol(Protocol):
 
     def _handle_response(self, response):
         ds = []
-        log.debug("Handling a response. Current expected responses: %s", self._response_deferreds)
+        log.debug(
+            "Handling a response: %s. Current expected responses: %s",
+            response, self._response_deferreds.keys()
+        )
         for key, val in response.items():
             if key in self._response_deferreds:
                 d = self._response_deferreds[key]
@@ -263,7 +273,9 @@ class ClientProtocolFactory(ClientFactory):
         self.connection_manager.protocol_disconnected(self.peer, connector)
 
     def buildProtocol(self, addr):
+        log.debug('Building a protocol')
         p = self.protocol()
         p.factory = self
         self.p = p
+        log.debug('Returning a protocol')
         return p

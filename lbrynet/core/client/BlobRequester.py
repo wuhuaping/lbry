@@ -38,145 +38,6 @@ def cache(fn):
     return helper
 
 
-class BlobRequester(object):
-    implements(IRequestCreator)
-
-    def __init__(self, blob_manager, peer_finder, payment_rate_manager, wallet, download_manager):
-        self.blob_manager = blob_manager
-        self.peer_finder = peer_finder
-        self.payment_rate_manager = payment_rate_manager
-        self.wallet = wallet
-        self.download_manager = download_manager
-        self._peers = defaultdict(int)  # {Peer: score}
-        self._available_blobs = defaultdict(list)  # {Peer: [blob_hash]}
-        self._unavailable_blobs = defaultdict(list)  # {Peer: [blob_hash]}}
-        self._protocol_prices = {}  # {ClientProtocol: price}
-        self._protocol_offers = {}
-        self._price_disagreements = []  # [Peer]
-        self._protocol_tries = {}
-        self._maxed_out_peers = []
-        self._incompatible_peers = []
-
-    ######## IRequestCreator #########
-    def send_next_request(self, peer, protocol):
-        """Makes an availability request, download request and price request"""
-        if not self.should_send_next_request(peer):
-            return defer.succeed(False)
-        return self._send_next_request(peer, protocol)
-
-    def get_new_peers(self):
-        d = self._get_hash_for_peer_search()
-        d.addCallback(self._find_peers_for_hash)
-        return d
-
-    ######### internal calls #########
-    def should_send_next_request(self, peer):
-        return (
-            self._blobs_to_download() and
-            self._should_send_request_to(peer)
-        )
-
-    def _send_next_request(self, peer, protocol):
-        log.debug('Sending a blob request for %s and %s', peer, protocol)
-        availability = AvailabilityRequest(self, peer, protocol, self.payment_rate_manager)
-        download = DownloadRequest(self, peer, protocol, self.payment_rate_manager, self.wallet)
-        price = PriceRequest(self, peer, protocol, self.payment_rate_manager)
-
-        sent_request = False
-        if availability.can_make_request():
-            availability.make_request_and_handle_response()
-            sent_request = True
-        if price.can_make_request():
-            # TODO: document why a PriceRequest is only made if an
-            # Availability or Download request was made
-            price.make_request_and_handle_response()
-            sent_request = True
-        if download.can_make_request():
-            try:
-                download.make_request_and_handle_response()
-                sent_request = True
-            except InsufficientFundsError as err:
-                return defer.fail(err)
-
-        return defer.succeed(sent_request)
-
-    def _get_hash_for_peer_search(self):
-        r = None
-        blobs_to_download = self._blobs_to_download()
-        if blobs_to_download:
-            blobs_without_sources = self._blobs_without_sources()
-            if not blobs_without_sources:
-                blob_hash = blobs_to_download[0].blob_hash
-            else:
-                blob_hash = blobs_without_sources[0].blob_hash
-            r = blob_hash
-        log.debug("Blob requester peer search response: %s", str(r))
-        return defer.succeed(r)
-
-    def _find_peers_for_hash(self, h):
-        if h is None:
-            return None
-        else:
-            d = self.peer_finder.find_peers_for_blob(h)
-
-            def choose_best_peers(peers):
-                bad_peers = self._get_bad_peers()
-                without_bad_peers = [p for p in peers if not p in bad_peers]
-                without_maxed_out_peers = [
-                    p for p in without_bad_peers if p not in self._maxed_out_peers]
-                return without_maxed_out_peers
-
-            d.addCallback(choose_best_peers)
-
-            def lookup_failed(err):
-                log.error("An error occurred looking up peers for a hash: %s", err.getTraceback())
-                return []
-
-            d.addErrback(lookup_failed)
-            return d
-
-    def _should_send_request_to(self, peer):
-        if self._peers[peer] < -5.0:
-            return False
-        if peer in self._price_disagreements:
-            return False
-        if peer in self._incompatible_peers:
-            return False
-        return True
-
-    def _get_bad_peers(self):
-        return [p for p in self._peers.iterkeys() if not self._should_send_request_to(p)]
-
-    def _hash_available(self, blob_hash):
-        for peer in self._available_blobs:
-            if blob_hash in self._available_blobs[peer]:
-                return True
-        return False
-
-    def _hash_available_on(self, blob_hash, peer):
-        if blob_hash in self._available_blobs[peer]:
-            return True
-        return False
-
-    def _blobs_to_download(self):
-        needed_blobs = self.download_manager.needed_blobs()
-        return sorted(needed_blobs, key=lambda b: b.is_downloading())
-
-    def _blobs_without_sources(self):
-        return [
-            b for b in self.download_manager.needed_blobs()
-            if not self._hash_available(b.blob_hash)
-        ]
-
-    def _price_settled(self, protocol):
-        if protocol in self._protocol_prices:
-            return True
-        return False
-
-    def _update_local_score(self, peer, amount):
-        self._peers[peer] += amount
-
-
 class RequestHelper(object):
     def __init__(self, requestor, peer, protocol, payment_rate_manager):
         self.requestor = requestor
@@ -235,6 +96,7 @@ class RequestHelper(object):
                 if not pending.is_too_low and not pending.is_accepted:
                     return pending.rate
             rate = self.payment_rate_manager.get_rate_blob_data(self.peer, self.available_blobs)
+            log.debug('Saving offer rate: %s', rate)
             self.protocol_offers[self.protocol] = rate
         return rate
 
@@ -334,7 +196,8 @@ class AvailabilityRequest(RequestHelper):
         assert request.response_identifier == 'available_blobs'
         if 'available_blobs' not in response_dict:
             raise InvalidResponseError("response identifier not in response")
-        log.debug("Received a response to the availability request")
+        log.debug(
+            "Received a response %s to the availability request: %s", response_dict, request)
         # save available blobs
         blob_hashes = response_dict['available_blobs']
         for blob_hash in blob_hashes:
@@ -566,3 +429,149 @@ class BlobDownloadDetails(object):
     def counting_write_func(self, data):
         self.peer.update_stats('blob_bytes_downloaded', len(data))
         return self.write_func(data)
+
+
+class BlobRequester(object):
+    implements(IRequestCreator)
+    AvailabilityRequest = AvailabilityRequest
+    DownloadRequest = DownloadRequest
+    PriceRequest = PriceRequest
+
+    def __init__(self, blob_manager, peer_finder, payment_rate_manager, wallet, download_manager):
+        self.blob_manager = blob_manager
+        self.peer_finder = peer_finder
+        self.payment_rate_manager = payment_rate_manager
+        self.wallet = wallet
+        self.download_manager = download_manager
+        self._peers = defaultdict(int)  # {Peer: score}
+        self._available_blobs = defaultdict(list)  # {Peer: [blob_hash]}
+        self._unavailable_blobs = defaultdict(list)  # {Peer: [blob_hash]}}
+        self._protocol_prices = {}  # {ClientProtocol: price}
+        self._protocol_offers = {}
+        self._price_disagreements = []  # [Peer]
+        self._protocol_tries = {}
+        self._maxed_out_peers = []
+        self._incompatible_peers = []
+
+    ######## IRequestCreator #########
+    def send_next_request(self, peer, protocol):
+        """Makes an availability request, download request and price request"""
+        if not self.should_send_next_request(peer):
+            return defer.succeed(False)
+        return self._send_next_request(peer, protocol)
+
+    def get_new_peers(self):
+        d = self._get_hash_for_peer_search()
+        d.addCallback(self._find_peers_for_hash)
+        return d
+
+    ######### internal calls #########
+    def should_send_next_request(self, peer):
+        return (
+            self._blobs_to_download() and
+            self._should_send_request_to(peer)
+        )
+
+    def _send_next_request(self, peer, protocol):
+        log.debug('Sending a blob request for %s and %s', peer, protocol)
+        availability = self.AvailabilityRequest(self, peer, protocol, self.payment_rate_manager)
+        download = self.DownloadRequest(
+            self, peer, protocol, self.payment_rate_manager, self.wallet)
+        price = self.PriceRequest(self, peer, protocol, self.payment_rate_manager)
+
+        sent_request = False
+        if availability.can_make_request():
+            log.debug('Making availability request')
+            availability.make_request_and_handle_response()
+            sent_request = True
+        if price.can_make_request():
+            log.debug('Making price request')
+            # TODO: document why a PriceRequest is only made if an
+            # Availability or Download request was made
+            price.make_request_and_handle_response()
+            sent_request = True
+        if download.can_make_request():
+            try:
+                log.debug('Making download request')
+                download.make_request_and_handle_response()
+                sent_request = True
+            except InsufficientFundsError as err:
+                return defer.fail(err)
+
+        return defer.succeed(sent_request)
+
+    def _get_hash_for_peer_search(self):
+        r = None
+        blobs_to_download = self._blobs_to_download()
+        if blobs_to_download:
+            blobs_without_sources = self._blobs_without_sources()
+            if not blobs_without_sources:
+                blob_hash = blobs_to_download[0].blob_hash
+            else:
+                blob_hash = blobs_without_sources[0].blob_hash
+            r = blob_hash
+        log.debug("Blob requester peer search response: %s", str(r))
+        return defer.succeed(r)
+
+    def _find_peers_for_hash(self, h):
+        if h is None:
+            return None
+        else:
+            d = self.peer_finder.find_peers_for_blob(h)
+
+            def choose_best_peers(peers):
+                bad_peers = self._get_bad_peers()
+                without_bad_peers = [p for p in peers if not p in bad_peers]
+                without_maxed_out_peers = [
+                    p for p in without_bad_peers if p not in self._maxed_out_peers]
+                return without_maxed_out_peers
+
+            d.addCallback(choose_best_peers)
+
+            def lookup_failed(err):
+                log.error("An error occurred looking up peers for a hash: %s", err.getTraceback())
+                return []
+
+            d.addErrback(lookup_failed)
+            return d
+
+    def _should_send_request_to(self, peer):
+        if self._peers[peer] < -5.0:
+            return False
+        if peer in self._price_disagreements:
+            return False
+        if peer in self._incompatible_peers:
+            return False
+        return True
+
+    def _get_bad_peers(self):
+        return [p for p in self._peers.iterkeys() if not self._should_send_request_to(p)]
+
+    def _hash_available(self, blob_hash):
+        for peer in self._available_blobs:
+            if blob_hash in self._available_blobs[peer]:
+                return True
+        return False
+
+    def _hash_available_on(self, blob_hash, peer):
+        if blob_hash in self._available_blobs[peer]:
+            return True
+        return False
+
+    def _blobs_to_download(self):
+        needed_blobs = self.download_manager.needed_blobs()
+        return sorted(needed_blobs, key=lambda b: b.is_downloading())
+
+    def _blobs_without_sources(self):
+        return [
+            b for b in self.download_manager.needed_blobs()
+            if not self._hash_available(b.blob_hash)
+        ]
+
+    def _price_settled(self, protocol):
+        if protocol in self._protocol_prices:
+            return True
+        return False
+
+    def _update_local_score(self, peer, amount):
+        self._peers[peer] += amount

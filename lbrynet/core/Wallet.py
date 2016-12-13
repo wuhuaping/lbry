@@ -243,6 +243,7 @@ class Wallet(object):
         """
         rounded_amount = Decimal(str(round(amount, 8)))
         peer = reserved_points.identifier
+        log.debug('Preparing to send %s to %s', rounded_amount, peer)
         assert(rounded_amount <= reserved_points.amount)
         assert(peer in self.peer_addresses)
         self.queued_payments[self.peer_addresses[peer]] += rounded_amount

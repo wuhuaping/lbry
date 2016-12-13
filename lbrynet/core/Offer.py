@@ -13,7 +13,7 @@ class Offer(object):
         self.rate = None
         if isinstance(offer, Decimal):
             self.rate = round(offer, 5)
-        elif isinstance(offer, float):
+        elif isinstance(offer, (float, int)):
             self.rate = round(Decimal(offer), 5)
         if self.rate is None or self.rate < Decimal(0.0):
             self.unset()
