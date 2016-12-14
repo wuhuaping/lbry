@@ -27,6 +27,7 @@ SUCCESS = False
 
 def main(args=None):
     parser = argparse.ArgumentParser()
+    parser.add_argument('--timeout', type=int, default=30)
     parser.add_argument('peer')
     parser.add_argument('blob_hash')
     args = parser.parse_args(args)
@@ -47,7 +48,7 @@ def main(args=None):
     connection_manager = ConnectionManager.ConnectionManager(
         downloader, rate_limiter, [requester], [wallet.get_info_exchanger()])
     # gawd - it shouldn't take 30 seconds to get a single blob :-(
-    reactor.callLater(30, reactor.stop)
+    reactor.callLater(args.timeout, reactor.stop)
     d = connection_manager.start()
     d.addErrback(log_support.failure, 'Something bad happened: %s')
     reactor.run()
