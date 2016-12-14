@@ -6,6 +6,10 @@ class ClientRequest(object):
         self.request_dict = request_dict
         self.response_identifier = response_identifier
 
+    def __repr__(self):
+        return '{}({!r}, {!r})'.format(
+            self.__class__.__name__, self.request_dict, self.response_identifier)
+
 
 class ClientPaidRequest(ClientRequest):
     def __init__(self, request_dict, response_identifier, max_pay_units):

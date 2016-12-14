@@ -5,6 +5,7 @@ from lbrynet import interfaces
 from lbrynet.conf import settings
 from lbrynet.core.client.ClientProtocol import ClientProtocolFactory
 from lbrynet.core.Error import InsufficientFundsError
+from lbrynet.core import log_support
 
 
 log = logging.getLogger(__name__)
@@ -73,9 +74,7 @@ class ConnectionManager(object):
         return defer.DeferredList(closing_deferreds)
 
     def get_next_request(self, peer, protocol):
-
         log.debug("Trying to get the next request for peer %s", peer)
-
         if not peer in self._peer_connections or self.stopped is True:
             log.debug("The peer has already been told to shut down.")
             return defer.succeed(False)
@@ -180,7 +179,7 @@ class ConnectionManager(object):
             if peers is None:
                 return None
             for peer in peers:
-                if not peer in self._peer_connections:
+                if peer not in self._peer_connections:
                     log.debug("Got a good peer. Returning peer %s", peer)
                     return peer
             log.debug("Couldn't find a good peer to connect to")
@@ -191,5 +190,6 @@ class ConnectionManager(object):
             d = get_new_peers(ordered_request_creators)
             d.addCallback(pick_best_peer)
             d.addCallback(self._connect_to_peer)
+            d.addErrback(log_support.failure, log, 'Failed to connect to peer: %s')
 
         self._next_manage_call = reactor.callLater(1, self._manage)

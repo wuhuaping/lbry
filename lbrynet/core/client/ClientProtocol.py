@@ -26,7 +26,14 @@ class ClientProtocol(Protocol):
 
     ######### Protocol #########
 
+    def __repr__(self):
+        if self.peer:
+            return '<ClientProtocol connected to {}>'.format(self.peer)
+        else:
+            return '<ClientProtocol disconnected>'
+
     def connectionMade(self):
+        log.debug('Connection Made to %s', self.factory.peer)
         self._connection_manager = self.factory.connection_manager
         self._rate_limiter = self.factory.rate_limiter
         self.peer = self.factory.peer
@@ -263,7 +270,9 @@ class ClientProtocolFactory(ClientFactory):
         self.connection_manager.protocol_disconnected(self.peer, connector)
 
     def buildProtocol(self, addr):
+        log.debug('Building a protocol')
         p = self.protocol()
         p.factory = self
         self.p = p
+        log.debug('Returning a protocol')
         return p

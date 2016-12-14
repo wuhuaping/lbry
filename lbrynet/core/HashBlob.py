@@ -81,7 +81,6 @@ class HashBlob(object):
         self.blob_hash = blob_hash
         self.length = length
         self.writers = {}  # {Peer: writer, finished_deferred}
-        self.finished_deferred = None
         self.verified = False
         self.upload_allowed = upload_allowed
         self.readers = 0
