@@ -29,6 +29,8 @@ log = logging.getLogger(__name__)
 alert = logging.getLogger("lbryalert." + __name__)
 
 
+DUST = 0.000000001
+
 class ReservedPoints(object):
     def __init__(self, identifier, amount):
         self.identifier = identifier
@@ -242,6 +244,7 @@ class Wallet(object):
         """
         rounded_amount = Decimal(str(round(amount, 8)))
         peer = reserved_points.identifier
+        log.debug('Preparing to send %s to %s', rounded_amount, peer)
         assert(rounded_amount <= reserved_points.amount)
         assert(peer in self.peer_addresses)
         self.queued_payments[self.peer_addresses[peer]] += rounded_amount
@@ -277,8 +280,7 @@ class Wallet(object):
         rounded_amount = Decimal(str(round(amount, 8)))
         assert(peer in self.current_address_given_to_peer)
         address = self.current_address_given_to_peer[peer]
-        log.debug("expecting a payment at address %s in the amount of %s",
-                 str(address), str(rounded_amount))
+        log.debug("Expecting a payment at address %s in the amount of %s", address, rounded_amount)
         self.expected_balances[address] += rounded_amount
         expected_balance = self.expected_balances[address]
         expected_time = datetime.datetime.now() + self.max_expected_payment_time
@@ -293,6 +295,7 @@ class Wallet(object):
         def set_address_for_peer(address):
             self.current_address_given_to_peer[peer] = address
             return address
+
         d = self.get_new_address()
         d.addCallback(set_address_for_peer)
         return d
@@ -300,18 +303,17 @@ class Wallet(object):
     def _send_payments(self):
         payments_to_send = {}
         for address, points in self.queued_payments.items():
-            if points > 0:
-                log.debug("Should be sending %s points to %s", str(points), str(address))
-                payments_to_send[address] = points
-                self.total_reserved_points -= points
-                self.wallet_balance -= points
-            else:
-                log.info("Skipping dust")
-
             del self.queued_payments[address]
+            if points < DUST:
+                log.info("Skipping dust")
+                continue
+            log.debug("Should be sending %s points to %s", points, address)
+            payments_to_send[address] = points
+            self.total_reserved_points -= points
+            self.wallet_balance -= points
 
         if payments_to_send:
-            log.debug("Creating a transaction with outputs %s", str(payments_to_send))
+            log.debug("Creating a transaction with outputs %s", payments_to_send)
             d = self._do_send_many(payments_to_send)
             d.addCallback(lambda txid: log.debug("Sent transaction %s", txid))
             return d
@@ -1148,8 +1150,7 @@ class LBRYcrdAddressQueryHandler(object):
             d.addCallback(create_response)
             return d
         if self.address is None:
-            log.warning("Expected a request for an address, but did not receive one")
-            return defer.fail(Failure(ValueError("Expected but did not receive an address request")))
+            raise ValueError("Expected but did not receive an address request")
         else:
             return defer.succeed({})
 

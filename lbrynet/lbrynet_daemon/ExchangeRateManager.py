@@ -8,9 +8,12 @@ from twisted.internet.task import LoopingCall
 
 from lbrynet import conf
 from lbrynet.metadata.Fee import FeeValidator
+from lbrynet import conf
+
 
 
 log = logging.getLogger(__name__)
+
 
 CURRENCY_PAIRS = ["USDBTC", "BTCLBC"]
 BITTREX_FEE = 0.0025
