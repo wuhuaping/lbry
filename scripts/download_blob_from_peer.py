@@ -46,7 +46,8 @@ def main(args=None):
     downloader = SingleBlobDownloader()
     connection_manager = ConnectionManager.ConnectionManager(
         downloader, rate_limiter, [requester], [wallet.get_info_exchanger()])
-    reactor.callLater(10, reactor.stop)
+    # gawd - it shouldn't take 30 seconds to get a single blob :-(
+    reactor.callLater(30, reactor.stop)
     d = connection_manager.start()
     d.addErrback(log_support.failure, 'Something bad happened: %s')
     reactor.run()
