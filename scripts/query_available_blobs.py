@@ -1,10 +1,12 @@
 from __future__ import print_function
+from lbrynet.core import log_support
 
 import argparse
 import collections
 import itertools
 import logging
 import os
+import random
 import sys
 
 import appdirs
@@ -12,7 +14,6 @@ from twisted.internet import defer
 from twisted.internet import reactor
 from twisted.internet import protocol
 from twisted.internet import endpoints
-from twisted.python import log
 
 from lbrynet import conf
 from lbrynet.core import Error
@@ -22,7 +23,6 @@ from lbrynet.core import BlobManager
 from lbrynet.core import HashAnnouncer
 from lbrynet.core import PeerManager
 from lbrynet.core import Session
-from lbrynet.core import log_support
 from lbrynet.core import utils
 from lbrynet.core.client import DHTPeerFinder
 from lbrynet.dht import node
@@ -30,7 +30,7 @@ from lbrynet.metadata import Metadata
 from lbrynet.core import StreamDescriptor as sd
 
 
-logger = logging.getLogger()
+log = logging.getLogger()
 
 
 def main(args=None):
@@ -42,10 +42,10 @@ def main(args=None):
     log_support.configure_console()
 
     db_dir = appdirs.user_data_dir('LBRY')
-    lbrycrd = appdirs.user_data_dir('lbrycrd')
+    #lbrycrd = appdirs.user_data_dir('lbrycrd')
     storage = Wallet.InMemoryStorage()
 
-    wallet = Wallet.LBRYcrdWallet(storage, wallet_conf=os.path.join(lbrycrd, 'lbrycrd.conf'))
+    wallet = Wallet.LBRYumWallet(storage)#, wallet_conf=os.path.join(lbrycrd, 'lbrycrd.conf'))
     session = Session.Session(
         0,
         db_dir=db_dir,
@@ -73,12 +73,12 @@ def processTracker(tracker, limit, download):
 
 
 def logAndStop(err):
-    log_support.failure(err, logger, 'This sucks: %s')
+    log_support.failure(err, log, 'This sucks: %s')
     reactor.stop()
 
 
 def logAndRaise(err):
-    log_support.failure(err, logger, 'This still sucks: %s')
+    log_support.failure(err, log, 'This still sucks: %s')
     return err
 
 
@@ -110,13 +110,13 @@ class Tracker(object):
         d = self.wallet.get_nametrie()
         d.addCallback(getNameClaims)
         if limit:
-            d.addCallback(itertools.islice, limit)
+            d.addCallback(lambda names: random.sample(list(names), limit))
         d.addCallback(self._setNames)
         d.addCallback(lambda _: self._getSdHashes())
         d.addCallback(lambda _: self._filterNames('sd_hash'))
         d.addCallback(lambda _: self._checkAvailability())
         d.addCallback(lambda _: self._filterNames('is_available'))
-        d.addCallback(lambda _: print(self.attempts_counter))
+        d.addCallback(lambda _: self.print_attempts_counter())
         if download:
             d.addCallback(lambda _: self._downloadAllBlobs())
             d.addCallback(lambda _: self._filterNames('sd_blob'))
@@ -135,6 +135,9 @@ class Tracker(object):
         self.names = [n for n in self.names if getattr(n, attr)]
         self.stats[attr] = len(self.names)
         print("We have {} names with attribute {}".format(len(self.names), attr))
+
+    def print_attempts_counter(self):
+        print(self.attempts_counter)
 
     def attempts_counter(self):
         return collections.Counter([n.availability_attempts for n in self.names])
@@ -185,11 +188,8 @@ class Name(object):
     def check_availability(self, blob_tracker):
         if not self.is_available and self.availability_attempts < self.MAX_ATTEMPTS:
             self.availability_attempts += 1
-            if self.availability_attempts > 1:
-                logger.info('Attempt %s to find %s', self.availability_attempts, self.name)
-            d = self._check_availability(blob_tracker)
-            d.addCallback(lambda _: self.check_availability(blob_tracker))
-            return d
+            log.info('Attempt %s to find %s', self.availability_attempts, self.name)
+            return self._check_availability(blob_tracker)
         else:
             return defer.succeed(True)
 
@@ -218,7 +218,10 @@ def download_sd_blob_with_timeout(session, sd_hash, payment_rate_manager):
 def getNameClaims(trie):
     for x in trie:
         if 'txid' in x:
-            yield x['name']
+            try:
+                yield str(x['name'])
+            except UnicodeError:
+                log.warning('Skippin name %s as it is not ascii', x['name'])
 
 
 def _getSdHash(metadata):
