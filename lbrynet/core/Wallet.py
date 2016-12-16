@@ -1014,6 +1014,8 @@ class LBRYumWallet(Wallet):
 
     # run commands as a deferToThread,  lbryum commands that only make
     # queries to lbryum server should be run this way
+    # TODO: keep track of running threads and cancel them on `stop`
+    #       otherwise the application will hang, waiting for threads to complete
     def _run_cmd_as_defer_to_thread(self, command_name, *args):
         cmd_runner = self._get_cmd_runner()
         cmd = known_commands[command_name]
