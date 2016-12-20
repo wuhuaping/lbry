@@ -315,9 +315,17 @@ class Session(object):
 
         self.rate_limiter.start()
         d1 = self.blob_manager.setup()
+        d1.addErrback(log.fail(lambda err: err), 'Failed to setup blob manager')
         d2 = self.wallet.start()
+        d2.addErrback(log.fail(lambda err: err), 'Failed to start wallet')
 
-        dl = defer.DeferredList([d1, d2], fireOnOneErrback=True, consumeErrors=True)
+        # Its frustrating that DeferredList doesn't tell you which deferred
+        # the error comes from. You can attach an errback to each one
+        # that logs the error, but you also need to return the err
+        # so that the DL doesn't think that it was successful. But then
+        # the failure will get passed along to any errbacks attached to the DL
+        # and probably logged twice.
+        dl = defer.DeferredList([d1, d2])
         dl.addCallback(lambda _: self.blob_tracker.start())
         return dl
 
