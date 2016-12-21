@@ -25,7 +25,7 @@ else
 fi
 
 pip install wheel
-MODULES="pyobjc-core==3.1.1 pyobjc-framework-Cocoa==3.1.1 pyobjc-framework-CFNetwork==3.1.1 pyobjc-framework-Quartz==3.1.1"
+MODULES="pyobjc-core==3.2.1 pyobjc-framework-Cocoa==3.2.1 pyobjc-framework-CFNetwork==3.2.1 pyobjc-framework-Quartz==3.2.1"
 if [ ${ON_TRAVIS} = true ]; then
     WHEEL_DIR="${TRAVIS_BUILD_DIR}/cache/wheel"
     mkdir -p "${WHEEL_DIR}"
