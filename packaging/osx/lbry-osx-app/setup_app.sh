@@ -15,6 +15,7 @@ ON_TRAVIS=false
 echo $(which pip)
 echo $PATH
 export PATH="/Library/Frameworks/Python.framework/Versions/2.7/bin/:$PATH"
+echo $(which pip)
 
 rm -rf build dist LBRY.app
 
