@@ -94,10 +94,10 @@ rm -rf build dist
 python setup_uri_handler.py py2app
 
 echo "Signing URI Handler"
-codesign --verbose=2 --sign  "${LBRY_DEVELOPER_ID}" -f "${DEST}/dist/LBRYURIHandler.app/Contents/Frameworks/Python.framework/Versions/2.7"
-codesign --verbose=2 --sign  "${LBRY_DEVELOPER_ID}" -f "${DEST}/dist/LBRYURIHandler.app/Contents/MacOS/python"
+codesign --verbose=2 --timestamp=none --sign  "${LBRY_DEVELOPER_ID}" -f "${DEST}/dist/LBRYURIHandler.app/Contents/Frameworks/Python.framework/Versions/2.7"
+codesign --verbose=2 --timestamp=none --sign  "${LBRY_DEVELOPER_ID}" -f "${DEST}/dist/LBRYURIHandler.app/Contents/MacOS/python"
 # not sure if --deep is appropriate here, but need to get LBRYURIHandler.app/Contents/Frameworks/libcrypto.1.0.0.dylib signed
-codesign --verbose=2 --deep --sign  "${LBRY_DEVELOPER_ID}" -f "${DEST}/dist/LBRYURIHandler.app/Contents/MacOS/LBRYURIHandler"
+codesign --verbose=2 --timestamp=none  --deep --sign  "${LBRY_DEVELOPER_ID}" -f "${DEST}/dist/LBRYURIHandler.app/Contents/MacOS/LBRYURIHandler"
 codesign -vvvv "${DEST}/dist/LBRYURIHandler.app"
 
 # py2app will skip _cffi_backend without explicitly including it
@@ -122,11 +122,11 @@ echo "Moving LBRYURIHandler.app into LBRY.app"
 mv "${DEST}/dist/LBRYURIHandler.app" "${DEST}/dist/LBRY.app/Contents/Resources"
 
 echo "Signing LBRY.app"
-codesign --verbose=2 --sign  "${LBRY_DEVELOPER_ID}" -f "${DEST}/dist/LBRY.app/Contents/Frameworks/Python.framework/Versions/2.7"
-codesign --verbose=2 --sign "${LBRY_DEVELOPER_ID}" -f "${DEST}/dist/LBRY.app/Contents/Frameworks/libgmp.10.dylib"
-codesign --verbose=2 --sign  "${LBRY_DEVELOPER_ID}" -f "${DEST}/dist/LBRY.app/Contents/MacOS/python"
+codesign --verbose=2 --timestamp=none --sign  "${LBRY_DEVELOPER_ID}" -f "${DEST}/dist/LBRY.app/Contents/Frameworks/Python.framework/Versions/2.7"
+codesign --verbose=2 --timestamp=none --sign "${LBRY_DEVELOPER_ID}" -f "${DEST}/dist/LBRY.app/Contents/Frameworks/libgmp.10.dylib"
+codesign --verbose=2 --timestamp=none --sign  "${LBRY_DEVELOPER_ID}" -f "${DEST}/dist/LBRY.app/Contents/MacOS/python"
 # adding deep here as well because of subcomponent issues
-codesign --verbose=2 --deep -s  "${LBRY_DEVELOPER_ID}" -f "${DEST}/dist/LBRY.app/Contents/MacOS/LBRY"
+codesign --verbose=2 --timestamp=none --deep -s  "${LBRY_DEVELOPER_ID}" -f "${DEST}/dist/LBRY.app/Contents/MacOS/LBRY"
 codesign -vvvv "${DEST}/dist/LBRY.app"
 
 rm -rf $tmp
