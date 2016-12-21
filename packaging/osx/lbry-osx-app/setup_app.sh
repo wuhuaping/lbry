@@ -7,6 +7,15 @@ DEST=`pwd`
 tmp="${DEST}/build"
 ON_TRAVIS=false
 
+#
+# TEMP - been having path issues on travis. It
+# seems to be picking up the system python, not
+# the one that we install
+#
+echo $(which pip)
+echo $PATH
+export PATH="/Library/Frameworks/Python.framework/Versions/2.7/bin/:$PATH"
+
 rm -rf build dist LBRY.app
 
 echo "Updating lbrynet"
