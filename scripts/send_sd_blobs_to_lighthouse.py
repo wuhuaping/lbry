@@ -31,16 +31,17 @@ from lbrynet.core import StreamDescriptor as sd
 from lbrynet import reflector
 
 
-log = logging.getLogger()
+log = logging.getLogger('main')
 
 
 def main(args=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument('destination', type=conf.server_port)
-    parser.add_argument('names', nargs='*')
+    parser.add_argument('destination', type=conf.server_port, nargs='+')
+    parser.add_argument('--names', nargs='*')
+    parser.add_argument('--limit', type=int)
     args = parser.parse_args(args)
 
-    log_support.configure_console(level='DEBUG')
+    log_support.configure_console(level='INFO')
 
     db_dir = appdirs.user_data_dir('lighthouse-uploader')
     safe_makedirs(db_dir)
@@ -67,7 +68,8 @@ def main(args=None):
         wallet=wallet,
         blob_manager=blob_manager,
     )
-    run(session, args.destination, args.names)
+    assert session.wallet
+    run(session, args.destination, args.names, args.limit)
     reactor.run()
 
 
@@ -79,15 +81,25 @@ def safe_makedirs(directory):
 
 
 @defer.inlineCallbacks
-def run(session, destination, names):
+def run(session, destinations, names, limit):
     try:
         yield session.setup()
+        while not session.wallet.network.is_connected():
+            log.info('Retrying wallet startup')
+            try:
+                yield session.wallet.start()
+            except ValueError:
+                pass
         names = yield getNames(session.wallet, names)
-        t = Tracker(session, destination, names)
+        if limit and limit < len(names):
+            names = random.sample(names, limit)
+        log.info('Processing %s names', len(names))
+        t = Tracker(session, destinations, names)
         yield t.processNameClaims()
     except Exception:
         log.exception('Something bad happened')
     finally:
+        log.warning('We are stopping the reactor gracefully')
         reactor.stop()
 
 
@@ -96,7 +108,7 @@ def getNames(wallet, names):
     if names:
         defer.returnValue(names)
     nametrie = yield wallet.get_nametrie()
-    defer.returnValue(getNameClaims(nametrie))
+    defer.returnValue(list(getNameClaims(nametrie)))
 
 
 def logAndStop(err):
@@ -111,9 +123,9 @@ def logAndRaise(err):
 
 
 class Tracker(object):
-    def __init__(self, session, destination, names):
+    def __init__(self, session, destinations, names):
         self.session = session
-        self.destination = destination
+        self.destinations = destinations
         self.names = [Name(n, self.blob_manager) for n in names]
         self.stats = {}
 
@@ -127,14 +139,19 @@ class Tracker(object):
 
     @defer.inlineCallbacks
     def processNameClaims(self):
-        log.info('Starting to get name claims')
-        yield self._getSdHashes()
-        self._filterNames('sd_hash')
-        yield self._downloadAllBlobs()
-        yield self._sendSdBlobs()
+        try:
+            log.info('Starting to get name claims')
+            yield self._getSdHashes()
+            self._filterNames('sd_hash')
+            log.info('Downloading all of the blobs')
+            yield self._downloadAllBlobs()
+            log.info('Sending the blobs')
+            yield self._sendSdBlobs()
+        except Exception:
+            log.exception('Something bad happened')
 
     def _getSdHashes(self):
-        return defer.DeferredList([n.setSdHash(self.wallet) for n in self.names])
+        return DeferredPool((n.setSdHash(self.wallet) for n in self.names), 10)
 
     def _filterNames(self, attr):
         self.names = [n for n in self.names if getattr(n, attr)]
@@ -145,22 +162,30 @@ class Tracker(object):
         return collections.Counter([n.availability_attempts for n in self.names])
 
     def _downloadAllBlobs(self):
-        return defer.DeferredList([n.download_sd_blob(self.session) for n in self.names])
+        return DeferredPool((n.download_sd_blob(self.session) for n in self.names), 10)
 
     @defer.inlineCallbacks
     def _sendSdBlobs(self):
         blobs = [n.sd_blob for n in self.names if n.sd_blob]
         log.info('Sending %s blobs', len(blobs))
         blob_hashes = [b.blob_hash for b in blobs]
-        factory = reflector.BlobClientFactory(self.blob_manager, blob_hashes, logBlobSent)
-        ip = yield reactor.resolve(self.destination[0])
+        for destination in self.destinations:
+            factory = reflector.BlobClientFactory(self.blob_manager, blob_hashes, logBlobSent)
+            yield self._connect(destination, factory)
+
+    @defer.inlineCallbacks
+    def _connect(self, destination, factory):
+        url, port = destination
+        ip = yield reactor.resolve(url)
         try:
             print('Connecting to {}'.format(ip))
-            yield reactor.connectTCP(ip, self.destination[1], factory)
-            factory.finished_deferred.addTimeout(60, reactor)
+            yield reactor.connectTCP(ip, port, factory)
+            #factory.finished_deferred.addTimeout(60, reactor)
             value = yield factory.finished_deferred
             if value:
                 print('Success!')
+            else:
+                print('Not success?', value)
         except Exception:
             log.exception('Somehow failed to send blobs')
 
@@ -170,6 +195,7 @@ def logBlobSent(sent, blob):
         print('Blob {} sent'.format(blob.blob_hash))
     else:
         print('Blob {} done'.format(blob.blob_hash))
+
 
 class Name(object):
     def __init__(self, name, blob_manager):
@@ -186,6 +212,8 @@ class Name(object):
             self.sd_hash = _getSdHash(metadata)
         except (Error.InvalidStreamInfoError, AssertionError):
             pass
+        except Exception:
+            log.exception('What happened')
 
     @defer.inlineCallbacks
     def download_sd_blob(self, session):
@@ -210,7 +238,7 @@ class Name(object):
 
 def download_sd_blob_with_timeout(session, sd_hash, payment_rate_manager, ):
     d = sd.download_sd_blob(session, sd_hash, payment_rate_manager)
-    d.addTimeout(60, reactor)
+    d.addTimeout(random.randint(10, 30), reactor)
     return d
 
 
@@ -225,6 +253,52 @@ def getNameClaims(trie):
 
 def _getSdHash(metadata):
     return metadata['sources']['lbry_sd_hash']
+
+
+class DeferredPool(defer.Deferred):
+    def __init__(self, deferred_iter, pool_size):
+        self.deferred_iter = deferred_iter
+        self.pool_size = pool_size
+        # results are returned unordered
+        self.result_list = []
+        self.started_count = 0
+        self.total_count = None
+        defer.Deferred.__init__(self)
+
+        for deferred in itertools.islice(deferred_iter, pool_size):
+            self._start_one(deferred)
+
+    def _start_one(self, deferred):
+        deferred.addCallbacks(self._callback, self._callback,
+                              callbackArgs=(self.started_count, defer.SUCCESS),
+                              errbackArgs=(self.started_count, defer.FAILURE))
+        # TODO: remove this line when things are working
+        deferred.addErrback(log.fail(), 'What happened')
+        self.started_count += 1
+
+    def _callback(self, result, index, success):
+        print('Got result for', index)
+        self.result_list.append((index, success, result))
+        if self._done():
+            self._finish()
+        else:
+            self._process_next()
+        return result
+
+    def _done(self):
+        return self.total_count  == len(self.result_list)
+
+    def _finish(self):
+        result_list = [(s, r) for i, s, r in sorted(self.result_list)]
+        self.callback(result_list)
+
+    def _process_next(self):
+        try:
+            deferred = next(self.deferred_iter)
+        except StopIteration:
+            self.total_count = self.started_count
+        else:
+            self._start_one(deferred)
 
 
 if __name__ == '__main__':
