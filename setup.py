@@ -31,7 +31,7 @@ keywords = "LBRY"
 
 # TODO: find a way to keep this in sync with requirements.txt
 requires = [
-    'Twisted==16.0.0',
+    'Twisted==16.6.0',
     'Yapsy==1.11.223',
     'appdirs==1.4.0',
     'argparse==1.2.1',

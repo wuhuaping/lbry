@@ -42,7 +42,7 @@ C:\Python27\Scripts\pip.exe install https://bitbucket.org/jobevers/cx_freeze/get
 
 C:\Python27\Scripts\pip.exe install cython==0.24.1
 
-C:\Python27\Scripts\pip.exe install Twisted==16.0.0
+C:\Python27\Scripts\pip.exe install Twisted==16.6.0
 
 C:\Python27\Scripts\pip.exe install Yapsy==1.11.223
 
