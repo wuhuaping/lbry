@@ -316,4 +316,4 @@ class AuthJSONRPCServer(AuthorizedBase):
             self._render_error(err, request, id_, version)
 
     def _render_response(self, result, code):
-        return defer.succeed({'result': result, 'code': code})
+        return defer.succeed({'result': result})
