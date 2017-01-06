@@ -18,7 +18,7 @@ class BlobReflectorClient(Protocol):
         self.blob_manager = self.factory.blob_manager
         self.response_buff = ''
         self.outgoing_buff = ''
-        self.blob_hashes_to_send = self.factory.blobs
+        self.blob_hashes_to_send = self.factory.blob_hashes
         self.next_blob_to_send = None
         self.blob_read_handle = None
         self.received_handshake_response = False
@@ -94,6 +94,7 @@ class BlobReflectorClient(Protocol):
 
     def set_not_uploading(self):
         if self.next_blob_to_send is not None:
+            self._on_blob_sent(False)
             self.next_blob_to_send.close_read_handle(self.read_handle)
             self.read_handle = None
             self.next_blob_to_send = None
@@ -106,7 +107,12 @@ class BlobReflectorClient(Protocol):
         assert self.read_handle is not None, \
             "self.read_handle was None when trying to start the transfer"
         d = self.file_sender.beginFileTransfer(self.read_handle, self)
+        d.addCallback(lambda _: self._on_blob_sent(True))
         return d
+
+    def _on_blob_sent(self, was_sent):
+        if self.factory.progress_callback:
+            self.factory.progress_callback(was_sent, self.next_blob_to_send)
 
     def handle_handshake_response(self, response_dict):
         if 'version' not in response_dict:
@@ -183,11 +189,12 @@ class BlobReflectorClient(Protocol):
 class BlobReflectorClientFactory(ClientFactory):
     protocol = BlobReflectorClient
 
-    def __init__(self, blob_manager, blobs):
+    def __init__(self, blob_manager, blob_hashes, progress_callback=None):
         self.blob_manager = blob_manager
-        self.blobs = blobs
+        self.blob_hashes = blob_hashes
         self.p = None
         self.sent_blobs = False
+        self.progress_callback = progress_callback
         self.finished_deferred = defer.Deferred()
 
     def buildProtocol(self, addr):
