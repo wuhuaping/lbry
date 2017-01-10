@@ -15,3 +15,5 @@ C:\Python27\Scripts\pip.exe install "C:\temp\gmpy-1.17-cp27-none-win32.whl"
 cd C:\projects\lbry
 
 C:\Python27\Scripts\pip.exe install -r requirements.txt
+
+C:\Python27\Scripts\pip.exe install .

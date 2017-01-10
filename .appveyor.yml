@@ -17,12 +17,10 @@ clone_folder: c:\projects\lbry
 
 
 install:
-- ps: .\packaging\scripts\install_deps_win32.ps1
+- ps: .\packaging\scripts\before_install.ps1
+- ps: .\packaging\scripts\install_win32.ps1
 - nuget install secure-file -ExcludeVersion
 - secure-file\tools\secure-file -decrypt packaging\certs\lbry2.pfx.enc -secret %pfx_key%
-- ps: .\packaging\scripts\before_install.ps1
-- C:\Python27\Scripts\pip.exe install .
-
 
 build_script:
 - ps: .\packaging\scripts\build_win32.ps1

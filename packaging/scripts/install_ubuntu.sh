@@ -43,3 +43,4 @@ pip install -r requirements.txt
 
 ./packaging/scripts/run_tests.sh
 ./packaging/scripts/run_pylint.sh
+pip install .

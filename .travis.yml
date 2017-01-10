@@ -29,13 +29,13 @@ before_install:
   - export SKIP_DMG=false
   - export SKIP_SIGN=false
   - export SKIP_PYLINT=false
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./packaging/scripts/install_deps_macos.sh; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./packaging/scripts/install_deps_ubuntu.sh; fi
   - mkdir -p lbrynet/resources/ui
   - ./packaging/scripts/before_install.sh
-  
+
+
 install:
-  - pip install .
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./packaging/scripts/install_macos.sh; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./packaging/scripts/install_ubuntu.sh; fi
 
 before_script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then openssl aes-256-cbc -k "$ENCRYPTION_SECRET" -in packaging/certs/dist.cer.enc -d -a -out packaging/certs/dist.cer; fi
