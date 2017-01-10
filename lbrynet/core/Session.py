@@ -1,5 +1,4 @@
 import logging
-import miniupnpc
 from lbrynet.core.BlobManager import DiskBlobManager, TempBlobManager
 from lbrynet.dht import node
 from lbrynet.core.PeerManager import PeerManager
@@ -11,6 +10,11 @@ from lbrynet.core.utils import generate_id
 from lbrynet.core.PaymentRateManager import BasePaymentRateManager, NegotiatedPaymentRateManager
 from lbrynet.core.BlobAvailability import BlobAvailabilityTracker
 from twisted.internet import threads, defer
+try:
+    import miniupnpc
+    MINIUPNPC_AVAILABLE = True
+except ImportError:
+    MINIUPNPC_AVAILABLE = False
 
 
 log = logging.getLogger(__name__)
@@ -120,7 +124,7 @@ class Session(object):
 
         self.peer_port = peer_port
 
-        self.use_upnp = use_upnp
+        self.use_upnp = use_upnp and MINIUPNPC_AVAILABLE
 
         self.rate_limiter = rate_limiter
 
