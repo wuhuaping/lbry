@@ -40,7 +40,3 @@ C:\Python27\Scripts\pip.exe install https://bitbucket.org/jobevers/cx_freeze/get
 
 
 C:\Python27\python.exe packaging\app\build_win32.py build bdist_msi
-
-if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode)  }
-
-signtool.exe sign /f packaging\certs\lbry2.pfx /p %key_pass% /tr http://tsa.starfieldtech.com /td SHA256 /fd SHA256 dist\*.msi
