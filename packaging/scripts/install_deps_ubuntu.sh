@@ -38,10 +38,8 @@ rm get-pip.py
 
 pip install pip --upgrade
 pip install requests[security]
-pip install Cython
-pip install unqlite
-pip install mock
-pip install coveralls
-pip install pylint
 
 pip install -r requirements.txt
+
+./packaging/scripts/run_tests.sh
+./packaging/scripts/run_pylint.sh

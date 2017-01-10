@@ -33,8 +33,6 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./packaging/scripts/install_deps_ubuntu.sh; fi
   - mkdir -p lbrynet/resources/ui
   - ./packaging/scripts/before_install.sh
-  - ./packaging/scripts/run_tests.sh
-  - ./packaging/scripts/run_pylint.sh
   
 install:
   - pip install .
