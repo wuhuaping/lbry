@@ -38,4 +38,6 @@ rm get-pip.py
 
 pip install pip --upgrade
 pip install six --upgrade
+pip install requests[security]
+
 pip install -r requirements.txt
