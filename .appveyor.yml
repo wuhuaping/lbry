@@ -26,11 +26,6 @@ build_script:
 - ps: .\packaging\scripts\build_win32.ps1
 
 
-test_script:
-- ps: .\packaging\scripts\run_tests.ps1
-- ps: .\packaging\scripts\run_pylint.ps1
-
-
 artifacts:
 - path: dist/*.msi
   name: msi

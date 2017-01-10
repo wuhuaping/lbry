@@ -43,7 +43,7 @@ before_script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./packaging/scripts/add_osx_key.sh; fi
 
 script:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then bash packaging/scripts/build_linux.sh -t; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then bash packaging/scripts/build_ubuntu.sh -t; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./packaging/scripts/build_macos.sh; fi
   # fail the build if this is a build for a tag and we don't have the versions matching; allow tags that start with 'test' to pass
   - if [[ -n "${TRAVIS_TAG}" ]]; then if [[ "${TRAVIS_TAG}" == test* ]] || [[ "v`python setup.py -V`" = "${TRAVIS_TAG}" ]]; then true; else false; fi; fi
