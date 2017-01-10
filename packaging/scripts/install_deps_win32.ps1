@@ -6,7 +6,9 @@ gcc --version
 
 mingw32-make --version
 
-C:\Python27\Scripts\pip.exe install "C:\projects\lbry\packaging\libs\win32\gmpy-1.17-cp27-none-win32.whl"
+Invoke-WebRequest "https://github.com/lbryio/lbry/raw/master/packaging/windows/libs/gmpy-1.17-cp27-none-win32.whl" -OutFile "C:\temp\gmpy-1.17-cp27-none-win32.whl"
+
+C:\Python27\Scripts\pip.exe install "C:\temp\gmpy-1.17-cp27-none-win32.whl"
 
 cd C:\projects\lbry
 
