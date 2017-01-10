@@ -1,0 +1,9 @@
+lbrynet
+lbryum
+requests
+certifi
+json
+jsonrpc
+seccure
+twisted
+logging

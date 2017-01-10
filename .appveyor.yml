@@ -16,21 +16,21 @@ notifications:
 clone_folder: c:\projects\lbry
 
 
-
 install:
-- cmd: dir C:\projects\lbry\packaging\windows\
-- ps: .\packaging\windows\init.ps1
+- ps: .\packaging\scripts\install_deps_win32.ps1
 - nuget install secure-file -ExcludeVersion
-- secure-file\tools\secure-file -decrypt packaging\windows\certs\lbry2.pfx.enc -secret %pfx_key%
-- ps: .\packaging\windows\install.ps1
+- secure-file\tools\secure-file -decrypt packaging\certs\lbry2.pfx.enc -secret %pfx_key%
+- ps: .\packaging\scripts\before_install.ps1
+- C:\Python27\Scripts\pip.exe install .
 
 
 build_script:
-- ps: .\packaging\windows\build.ps1
+- ps: .\packaging\scripts\build_win32.ps1
 
 
 test_script:
-- ps: .\packaging\windows\test.ps1
+- ps: .\packaging\scripts\run_tests.ps1
+- ps: .\packaging\scripts\run_pylint.ps1
 
 
 artifacts:
@@ -38,7 +38,7 @@ artifacts:
   name: msi
 - path: build/exe.win32-2.7/
   name: lbry-portable
-- path: packaging/windows/lbry-win32-app/LBRY-URI.reg
+- path: packaging/app/win32/LBRY-URI.reg
   name: LBRY-URI
 
 

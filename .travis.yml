@@ -25,21 +25,28 @@ cache:
     - $TRAVIS_BUILD_DIR/cache/wheel
 
 before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./packaging/travis/setup_osx.sh; fi
+  - export ON_TRAVIS=true
+  - export SKIP_DMG=false
+  - export SKIP_SIGN=false
+  - export SKIP_PYLINT=false
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./packaging/scripts/install_deps_macos.sh; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./packaging/scripts/install_deps_ubuntu.sh; fi
   - mkdir -p lbrynet/resources/ui
-  - ./packaging/travis/setup_build.sh
+  - ./packaging/scripts/before_install.sh
+  - ./packaging/scripts/run_tests.sh
+  - ./packaging/scripts/run_pylint.sh
   
 install:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./packaging/travis/install_dependencies_and_run_tests.sh; fi
+  - pip install .
 
 before_script:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then openssl aes-256-cbc -k "$ENCRYPTION_SECRET" -in packaging/osx/certs/dist.cer.enc -d -a -out packaging/osx/certs/dist.cer; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then openssl aes-256-cbc -k "$ENCRYPTION_SECRET" -in packaging/osx/certs/dist.p12.enc -d -a -out packaging/osx/certs/dist.p12; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./packaging/osx/add-key.sh; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then openssl aes-256-cbc -k "$ENCRYPTION_SECRET" -in packaging/certs/dist.cer.enc -d -a -out packaging/certs/dist.cer; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then openssl aes-256-cbc -k "$ENCRYPTION_SECRET" -in packaging/certs/dist.p12.enc -d -a -out packaging/certs/dist.p12; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./packaging/scripts/add_osx_key.sh; fi
 
 script:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then bash packaging/ubuntu/ubuntu_package_setup.sh -t; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd packaging/osx/lbry-osx-app && ./setup_app.sh && cd $TRAVIS_BUILD_DIR; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then bash packaging/scripts/build_linux.sh -t; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./packaging/scripts/build_macos.sh; fi
   # fail the build if this is a build for a tag and we don't have the versions matching; allow tags that start with 'test' to pass
   - if [[ -n "${TRAVIS_TAG}" ]]; then if [[ "${TRAVIS_TAG}" == test* ]] || [[ "v`python setup.py -V`" = "${TRAVIS_TAG}" ]]; then true; else false; fi; fi
 
