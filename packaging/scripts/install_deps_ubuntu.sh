@@ -37,7 +37,11 @@ python get-pip.py
 rm get-pip.py
 
 pip install pip --upgrade
-pip install six --upgrade
 pip install requests[security]
+pip install Cython
+pip install unqlite
+pip install mock
+pip install coveralls
+pip install pylint
 
 pip install -r requirements.txt
