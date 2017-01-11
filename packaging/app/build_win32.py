@@ -2,13 +2,15 @@ import os
 import sys
 import opcode
 from cx_Freeze import Executable
-from cx_Freeze import setup as cx_setup
+from cx_Freeze import setup
+from pip import req as pip_req, download as pip_download
 import requests.certs
 import site
 import pkg_resources
+from lbrynet import __version__ as lbrynet_version
 
 
-app_dir = os.path.join("packaging", "tray_app", "win32")
+app_dir = os.path.join("packaging", "app")
 daemon_dir = os.path.join('lbrynet', 'lbrynet_daemon')
 icon_dir = os.path.join("packaging", "img")
 win_icon = os.path.join(icon_dir, "lbry256.ico")
@@ -22,9 +24,59 @@ onlyfiles = [f for f in os.listdir(schemas) if os.path.isfile(os.path.join(schem
 zipincludes = [(os.path.join(schemas, f), os.path.join("jsonschema", "schemas", f)) for f in onlyfiles]
 
 
+def package_files(directory):
+    for path, _, filenames in os.walk(directory):
+        for filename in filenames:
+            yield os.path.join('..', path, filename)
+
+
+module_names = {
+    'Twisted': 'twisted',
+    'dnspython': 'dns',
+    'loggly-python-handler': 'loggly',
+    'pyyaml': 'yaml',
+    'protobuf': 'google.protobuf',
+    'slowaes': 'aes',
+    'txJSON-RPC': 'txjsonrpc',
+    'pycryptodome': 'Crypto'
+}
+
+
+def get_module_name(m_name):
+    if m_name not in module_names:
+        return m_name
+    return module_names[m_name]
+
+
+def get_req(req):
+    for c in ['==', '<=', '>=']:
+        if c in req:
+            r, v = req.split(c)
+            return get_module_name(r)
+    return get_module_name(req)
+
+
+def get_requirements():
+    reqs = []
+    requirements = pip_req.parse_requirements('requirements.txt', session=pip_download.PipSession())
+
+    for item in requirements:
+        if item.req:
+            reqs.append(get_req(str(item.req)))
+        if getattr(item, 'markers', None):
+            if item.markers is not None:
+                # remove OS specific requirements
+                if getattr(item.markers, 'evaluate', None):
+                    if not item.markers.evaluate():
+                        reqs.remove(get_req(str(item.req)))
+                else:
+                    print "Don't know how to process markers: %s" % str(item.markers)
+    return reqs
+
+
 def get_windows_executables(dist_name):
     tray_app = Executable(
-        script=os.path.join(app_dir, 'LBRYWin32App.py'),
+        script=os.path.join(app_dir, 'main.py'),
         base='Win32GUI',
         icon=win_icon,
         targetName='{0}.exe'.format(dist_name)
@@ -97,7 +149,7 @@ def find_data_file(filename):
 
 
 def get_win_shortcut_params(dist_name, shortcut, directory=None, target=None, name=None, component=None, app_args=None,
-                            description=None, hotkey=None, icon=None, icon_index=None, wkdir=None):
+                            description=None, hotkey=None, icon=None, icon_index=None, show_command=None, wkdir=None):
     params = (
         shortcut,
         directory or 'ProgramMenuFolder',
@@ -109,28 +161,33 @@ def get_win_shortcut_params(dist_name, shortcut, directory=None, target=None, na
         hotkey,
         icon,
         icon_index,
+        show_command,
         wkdir or 'TARGETDIR',
     )
     return params
 
 
-def setup(requires, name, platform, description, version, maintainer, maintainer_email, url, author,
-          keywords, base_dir, entry_points, package_data, dependency_links, data_files):
+name = "LBRY"
+data_files = [os.path.join('packaging', 'img', 'app.icns')]
+dist_name = "LBRY"
+description = "A decentralized media library and marketplace"
+author = "LBRY, Inc"
+url = "lbry.io"
+maintainer = "Jack Robison"
+maintainer_email = "jack@lbry.io"
+keywords = "LBRY"
+requires = get_requirements()
+exes = get_windows_executables(name)
+options = get_windows_options(requires, name)
 
-    exes = get_windows_executables(name)
-    options = get_windows_options(requires, name)
-
-    cx_setup(
-        name=name,
-        description=description,
-        version=version,
-        maintainer=maintainer,
-        maintainer_email=maintainer_email,
-        url=url,
-        author=author,
-        keywords=keywords,
-        data_files=data_files,
-        options=options,
-        executables=exes,
-        package_data=package_data
-    )
+setup(
+    name=name,
+    description=description,
+    version=lbrynet_version,
+    url=url,
+    author=author,
+    keywords=keywords,
+    data_files=data_files,
+    options=options,
+    executables=exes,
+)

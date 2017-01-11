@@ -17,3 +17,7 @@ cd C:\projects\lbry
 C:\Python27\Scripts\pip.exe install -r requirements.txt
 
 C:\Python27\Scripts\pip.exe install .
+
+.\packaging\scripts\run_tests.ps1
+
+.\packaging\scripts\run_pylint.ps1
