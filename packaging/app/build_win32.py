@@ -38,7 +38,8 @@ module_names = {
     'protobuf': 'google.protobuf',
     'slowaes': 'aes',
     'txJSON-RPC': 'txjsonrpc',
-    'pycryptodome': 'Crypto'
+    'pycryptodome': 'Crypto',
+    'pypiwin32': 'win32api'
 }
 
 
