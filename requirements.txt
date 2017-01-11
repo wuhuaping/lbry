@@ -32,4 +32,5 @@ miniupnpc==1.9; sys_platform != 'win32'
 pycrypto==2.6.1; sys_platform != 'win32'
 pycryptodome==3.4.3; sys_platform == 'win32'
 cx_Freeze; sys_platform == 'win32'
+pypiwin32==219; sys_platform == 'win32'
 https://github.com/lbryio/lbryum/tarball/master/#egg=lbryum
