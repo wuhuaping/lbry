@@ -25,7 +25,7 @@ install:
 build_script:
 - ps: .\packaging\scripts\build_win32.ps1
 
-test:
+test_script:
 - ps: packaging\scripts\run_tests.ps1
 - ps: packaging\scripts\run_pylint.ps1
 
