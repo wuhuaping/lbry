@@ -6,9 +6,13 @@
 set -euo pipefail
 set -o xtrace
 
-if [ ${TRAVIS_OS_NAME} = "linux" ]; then
+if [ `uname` = "Linux" ]; then
     source venv/bin/activate
 fi
 
 pip install -r requirements.txt
 pip install .
+
+if [ `uname` = "Linux" ]; then
+    deactivate nondestructive
+fi

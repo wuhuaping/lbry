@@ -1,6 +1,7 @@
 #! /bin/bash
 
-if [ ${TRAVIS_OS_NAME} = "linux" ]; then
+
+if [ `uname` = "Linux" ]; then
     source venv/bin/activate
 fi
 
@@ -17,3 +18,7 @@ pylint -E --disable=inherit-non-class --disable=no-member \
        --enable=missing-final-newline \
        --enable=mixed-indentation \
        lbrynet $@
+
+if [ `uname` = "Linux" ]; then
+    deactivate nondestructive
+fi

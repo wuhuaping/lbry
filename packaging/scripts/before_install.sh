@@ -37,6 +37,8 @@ if [ ${TRAVIS_OS_NAME} = "linux" ]; then
     rm get-pip.py
     pip install pip --upgrade
     pip install requests[security]
+
+    deactivate nondestructive
 else
     brew update
     # follow this pattern to avoid failing if its already
@@ -69,6 +71,7 @@ else
     fi
 
     if [ ${ON_TRAVIS} = true ]; then
+        export PATH=${PATH}:/Library/Frameworks/Python.framework/Versions/2.7/bin
         wget https://www.python.org/ftp/python/2.7.11/python-2.7.11-macosx10.6.pkg
         sudo installer -pkg python-2.7.11-macosx10.6.pkg -target /
         pip install -U pip
