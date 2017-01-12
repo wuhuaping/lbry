@@ -20,25 +20,6 @@ if [ ${TRAVIS_OS_NAME} = "linux" ]; then
     $SUDO apt-get ${QUIET} install -y --no-install-recommends \
           build-essential python-dev libffi-dev libssl-dev git \
           libgmp3-dev wget ca-certificates python-virtualenv
-
-    # create a virtualenv so we don't muck with anything on the system
-    virtualenv venv
-    # need to unset these or else we can't activate
-    set +eu
-    source venv/bin/activate
-
-    # need a modern version of pip (more modern than ubuntu default)
-    wget https://bootstrap.pypa.io/get-pip.py
-    python get-pip.py
-    rm get-pip.py
-    pip install pip --upgrade
-    pip install requests[security]
-
-    # install lbrynet reqs
-    pip install -r requirements.txt
-
-    deactivate nondestructive
-
 else
     brew update
     # follow this pattern to avoid failing if its already
@@ -57,7 +38,6 @@ else
         brew link --force openssl
     fi
 
-
     if brew ls --versions hg > /dev/null; then
         echo 'hg is already installed by brew'
     else
@@ -69,27 +49,6 @@ else
     else
         brew install wget
     fi
-
-    if [ ${ON_TRAVIS} = true ]; then
-        wget https://www.python.org/ftp/python/2.7.11/python-2.7.11-macosx10.6.pkg
-        sudo installer -pkg python-2.7.11-macosx10.6.pkg -target /
-        pip install -U pip
-        pip install pip --upgrade
-        pip install setuptools --upgrade
-    fi
-
-    pip install vex
-
-    if ! which vex >/dev/null; then
-        export PATH=${PATH}:/Library/Frameworks/Python.framework/Versions/2.7/bin
-    fi
-
-    if [ `vex --list | grep "^build_venv"` ]; then
-        vex -r build_venv echo "Removing old venv"
-    fi
-
-    # install lbrynet reqs
-    vex -m build_venv pip install -r requirements.txt
 fi
 
 # Configure build-specific things
@@ -108,6 +67,19 @@ set_build() {
   mv -- tmpbuildfile "$file"
 }
 
+# create a virtualenv so we don't muck with anything on the system
+virtualenv venv
+# need to unset these or else we can't activate
+
+set +eu
+source venv/bin/activate
+
+pip install pip --upgrade
+pip install requests[security]
+
+# install lbrynet reqs
+pip install -r requirements.txt
+
 IS_RC_REGEX="v[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+rc[[:digit:]]+"
 
 if [[ -z "$TRAVIS_TAG" ]]; then
@@ -121,5 +93,7 @@ elif [[ "$TRAVIS_TAG" =~ $IS_RC_REGEX ]]; then
 else
     set_build "release"
 fi
+
+deactivate
 
 set -eu

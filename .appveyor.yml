@@ -23,7 +23,7 @@ install:
 - secure-file\tools\secure-file -decrypt packaging\certs\lbry2.pfx.enc -secret %pfx_key%
 
 build_script:
-- ps: .\packaging\scripts\build_win32.ps1
+- ps: .\packaging\scripts\build.ps1
 
 test_script:
 - ps: packaging\scripts\run_tests.ps1

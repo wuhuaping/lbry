@@ -1,9 +1,6 @@
 #! /bin/bash
 
-
-if [ `uname` = "Linux" ]; then
-    source venv/bin/activate
-fi
+source venv/bin/activate
 
 pip install pylint
 
@@ -19,6 +16,4 @@ pylint -E --disable=inherit-non-class --disable=no-member \
        --enable=mixed-indentation \
        lbrynet $@
 
-if [ `uname` = "Linux" ]; then
-    deactivate nondestructive
-fi
+deactivate
