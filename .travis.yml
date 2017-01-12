@@ -33,6 +33,7 @@ before_install:
   - ./packaging/scripts/before_install.sh
 
 install:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PATH=${PATH}:/Library/Frameworks/Python.framework/Versions/2.7/bin; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then vex build_venv ./packaging/scripts/install.sh; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then vex build_venv ./packaging/scripts/run_tests.sh; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then vex build_venv ./packaging/scripts/run_pylint.sh; fi
