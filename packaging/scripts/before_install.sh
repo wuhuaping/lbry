@@ -26,7 +26,6 @@ if [ ${TRAVIS_OS_NAME} = "linux" ]; then
     # need to unset these or else we can't activate
     set +eu
     source venv/bin/activate
-    set -eu
 
     # need a modern version of pip (more modern than ubuntu default)
     wget https://bootstrap.pypa.io/get-pip.py
@@ -39,6 +38,7 @@ if [ ${TRAVIS_OS_NAME} = "linux" ]; then
     pip install -r requirements.txt
 
     deactivate nondestructive
+
 else
     brew update
     # follow this pattern to avoid failing if its already
@@ -121,3 +121,5 @@ elif [[ "$TRAVIS_TAG" =~ $IS_RC_REGEX ]]; then
 else
     set_build "release"
 fi
+
+set -eu
