@@ -1,6 +1,10 @@
 # have to do `which trial` instead of simply trial because coverage needs the full path
 
-pip install Cython --install-option="--no-cython-compile"
+if [ ${TRAVIS_OS_NAME} = "linux" ]; then
+    source venv/bin/activate
+fi
+
+pip install Cython
 pip install unqlite
 pip install mock
 pip install coveralls

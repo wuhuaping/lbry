@@ -5,15 +5,8 @@ set -o xtrace
 
 # Install stuff needed to build the app
 
-# to make pyobjc wheels:
-#    hg clone https://bitbucket.org/jackrobison/pyobjc
-#    cd pyobjc
-#    python development-support/set-pyobjc-version 3.2.1
-#    pip wheel pyobjc-framework-*
-#    pip wheel pyobjc-core
-#    pip wheel pyobjc
 
-
+# Clone and install pyobjc 3.2.1 w/ supportsSecureCoding patch (Sierra support)
 hg clone https://bitbucket.org/jackrobison/pyobjc
 cd pyobjc
 python development-support/set-pyobjc-version 3.2.1
@@ -24,21 +17,6 @@ pip install ./pyobjc-framework-Quartz --upgrade
 pip install ./pyobjc-framework-NotificationCenter --upgrade
 cd ..
 rm -rf pyobjc
-
-#    mkdir -p wheels
-#    cd wheels
-#    wget https://s3.amazonaws.com/files.lbry.io/wheels.zip
-#    unzip wheels.zip
-#    rm wheels.zip
-#
-#    pip install ./pyobjc_framework_Cocoa-3.2.1-cp27-cp27m-macosx_10_6_intel.whl --upgrade
-#    pip install ./pyobjc_framework_CFNetwork-3.2.1-cp27-cp27m-macosx_10_6_intel.whl --upgrade
-#    pip install ./pyobjc_framework_Quartz-3.2.1-cp27-cp27m-macosx_10_6_intel.whl --upgrade
-#    pip install ./pyobjc_core-3.2.1-cp27-cp27m-macosx_10_6_intel.whl --upgrade
-#    pip install ./pyobjc-3.2.1-cp27-none-any.whl --upgrade
-#    cd ..
-#    rm -rf wheels
-#fi
 
 pip install modulegraph==0.13
 pip install hg+https://bitbucket.org/jackrobison/py2app

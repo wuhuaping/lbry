@@ -32,10 +32,14 @@ before_install:
   - mkdir -p lbrynet/resources/ui
   - ./packaging/scripts/before_install.sh
 
-
 install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./packaging/scripts/install_macos.sh; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./packaging/scripts/install_ubuntu.sh; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then vex build_venv ./packaging/scripts/install.sh; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then vex build_venv ./packaging/scripts/run_tests.sh; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then vex build_venv ./packaging/scripts/run_pylint.sh; fi
+
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./packaging/scripts/install.sh; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./packaging/scripts/run_tests.sh; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./packaging/scripts/run_pylint.sh; fi
 
 before_script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then openssl aes-256-cbc -k "$ENCRYPTION_SECRET" -in packaging/certs/dist.cer.enc -d -a -out packaging/certs/dist.cer; fi
@@ -44,14 +48,14 @@ before_script:
 
 script:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then bash packaging/scripts/build_ubuntu.sh -t; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./packaging/scripts/build_macos.sh; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then vex build_venv ./packaging/scripts/build_macos.sh; fi
   # fail the build if this is a build for a tag and we don't have the versions matching; allow tags that start with 'test' to pass
   - if [[ -n "${TRAVIS_TAG}" ]]; then if [[ "${TRAVIS_TAG}" == test* ]] || [[ "v`python setup.py -V`" = "${TRAVIS_TAG}" ]]; then true; else false; fi; fi
 
 before_deploy:
   # s3 release can only upload a folder so move the package into an upload folder
   - mkdir "${TRAVIS_BUILD_DIR}/upload"
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then mv "${TRAVIS_BUILD_DIR}/packaging/osx/lbry-osx-app/`python setup.py --name`.`python setup.py -V`.dmg" "${TRAVIS_BUILD_DIR}/upload"; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then mv "${TRAVIS_BUILD_DIR}/packaging/app/`python build_macos.py --name`.`python setup.py -V`.dmg" "${TRAVIS_BUILD_DIR}/upload"; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then mv "${TRAVIS_BUILD_DIR}/`python setup.py --name`_`python setup.py -V`_amd64.deb" "${TRAVIS_BUILD_DIR}/upload"; fi
 
 deploy:

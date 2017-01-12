@@ -1,5 +1,9 @@
 #! /bin/bash
 
+if [ ${TRAVIS_OS_NAME} = "linux" ]; then
+    source venv/bin/activate
+fi
+
 pip install pylint
 
 # Ignoring distutils because: https://github.com/PyCQA/pylint/issues/73
