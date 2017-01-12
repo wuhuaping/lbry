@@ -80,6 +80,10 @@ else
 
     pip install vex
 
+    if ! which vex >/dev/null; then
+        export PATH=${PATH}:/Library/Frameworks/Python.framework/Versions/2.7/bin
+    fi
+
     if [ `vex --list | grep "^build_venv"` ]; then
         vex -r build_venv echo "Removing old venv"
     fi
