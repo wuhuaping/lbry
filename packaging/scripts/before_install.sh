@@ -38,6 +38,9 @@ if [ ${TRAVIS_OS_NAME} = "linux" ]; then
     pip install pip --upgrade
     pip install requests[security]
 
+    # install lbrynet reqs
+    pip install -r requirements.txt
+
     deactivate nondestructive
 else
     brew update
@@ -84,7 +87,9 @@ else
     if [ `vex --list | grep "^build_venv"` ]; then
         vex -r build_venv echo "Removing old venv"
     fi
-    vex -m build_venv echo "Making new venv"
+
+    # install lbrynet reqs
+    vex -m build_venv pip install -r requirements.txt
 fi
 
 # Configure build-specific things

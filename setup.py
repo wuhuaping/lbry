@@ -30,7 +30,8 @@ def package_files(directory):
 
 def get_requirements():
     reqs = []
-    requirements = pip_req.parse_requirements('requirements.txt', session=pip_download.PipSession())
+    requirements_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'requirements.txt')
+    requirements = pip_req.parse_requirements(requirements_path, session=pip_download.PipSession())
 
     for item in requirements:
         if item.req:
