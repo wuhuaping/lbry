@@ -1,8 +1,5 @@
 #!/bin/bash
 
-set -euo pipefail
-set -o xtrace
-
 # Install and update pip, set up venv, and install brew/apt-get required stuff
 #
 if [ ${TRAVIS_OS_NAME} = "linux" ]; then
