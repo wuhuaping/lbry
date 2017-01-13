@@ -4,7 +4,9 @@ set -o errexit
 set -o xtrace
 
 # Install stuff needed to build the app
+set +u
 source venv/bin/activate
+set -u
 
 if [ ${TRAVIS_OS_NAME} = "osx" ]; then
     # Clone and install pyobjc 3.2.1 w/ supportsSecureCoding patch (Sierra support)
@@ -75,17 +77,10 @@ if [ ${TRAVIS_OS_NAME} = "osx" ]; then
     rm -rf dist "${NAME}.${VERSION}.dmg"
     dmgbuild -s ./packaging/scripts/dmg_settings.py "LBRY" "${NAME}.${VERSION}.dmg"
 else
-    sudo add-apt-repository -y ppa:spotify-jyrki/dh-virtualenv
-    sudo apt-get ${QUIET} update
-    sudo apt-get install -y --no-install-recommends software-properties-common
-    sudo apt-get install build-essential libffi-dev libssl-dev debhelper dh-virtualenv
-
-    WEB_UI_BRANCH="master"
-    SOURCE_DIR=$PWD
-    BUILD_DIR="../lbry-build-$(date +%Y%m%d-%H%M%S)"
-
-    mkdir -p "$BUILD_DIR"
-    # cd "$BUILD_DIR"
+    SUDO=''
+    if (( $EUID != 0 )); then
+        SUDO='sudo'
+    fi
 
     if [ -z ${TRAVIS+x} ]; then
       # if not on travis, its nice to see progress
@@ -94,6 +89,20 @@ else
         QUIET="-qq"
     fi
 
+    $SUDO apt-get install -y --no-install-recommends software-properties-common
+    $SUDO add-apt-repository -y ppa:spotify-jyrki/dh-virtualenv
+    $SUDO apt-get ${QUIET} update
+    $SUDO apt-get install -y --no-install-recommends build-essential libffi-dev libssl-dev debhelper dh-virtualenv
+
+    WEB_UI_BRANCH="master"
+    SOURCE_DIR=$PWD
+    BUILD_DIR="../lbry-build-$(date +%Y%m%d-%H%M%S)"
+
+    mkdir -p "$BUILD_DIR"
+    # cd "$BUILD_DIR"
+
+    # TODO: explain why this is patched
+    # TOD: move this out of jobevers and into lbryio
     pip install git+https://github.com/jobevers/make-deb
 
     # dpkg-buildpackage outputs its results into '..' so
@@ -167,10 +176,10 @@ else
     echo "Replaces: lbrynet (<< 0.3.5)" >> control/control
 
     # repackage .deb
-    sudo chown -R root:root control data
+    $SUDO chown -R root:root control data
     tar -czf control.tar.gz -C control .
     tar -cJf data.tar.xz -C data .
-    sudo chown root:root debian-binary control.tar.gz data.tar.xz
+    $SUDO chown root:root debian-binary control.tar.gz data.tar.xz
     ar r "$PACKAGE" debian-binary control.tar.gz data.tar.xz
 
     # TODO: we can append to data.tar instead of extracting it all and recompressing

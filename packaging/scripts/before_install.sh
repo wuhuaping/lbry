@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -o xtrace
+
 # Install and update pip, set up venv, and install brew/apt-get required stuff
 #
 if [ ${TRAVIS_OS_NAME} = "linux" ]; then
@@ -19,7 +21,8 @@ if [ ${TRAVIS_OS_NAME} = "linux" ]; then
     $SUDO apt-get ${QUIET} update
     $SUDO apt-get ${QUIET} install -y --no-install-recommends \
           build-essential python-dev libffi-dev libssl-dev git \
-          libgmp3-dev wget ca-certificates python-virtualenv
+          libgmp3-dev wget ca-certificates python-virtualenv \
+	  software-properties-common 
 else
     brew update
     # follow this pattern to avoid failing if its already
@@ -69,10 +72,11 @@ set_build() {
 
 # create a virtualenv so we don't muck with anything on the system
 virtualenv venv
-# need to unset these or else we can't activate
 
-set +eu
+# need to unset these or else we can't activate
+set +u
 source venv/bin/activate
+set -u
 
 pip install pip --upgrade
 pip install requests[security]
@@ -94,6 +98,6 @@ else
     set_build "release"
 fi
 
+# need to unset these or else we can't deactivate
+set +eu
 deactivate
-
-set -eu

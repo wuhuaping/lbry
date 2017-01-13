@@ -1,8 +1,14 @@
 #! /bin/bash
 
+set -o xtrace
+
+set +u
 source venv/bin/activate
+set -u
+
 
 pip install pylint
+
 
 # Ignoring distutils because: https://github.com/PyCQA/pylint/issues/73
 # TODO: as code quality improves, make pylint be more strict
@@ -16,4 +22,5 @@ pylint -E --disable=inherit-non-class --disable=no-member \
        --enable=mixed-indentation \
        lbrynet $@
 
+set +eu
 deactivate
