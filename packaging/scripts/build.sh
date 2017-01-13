@@ -92,7 +92,8 @@ else
     $SUDO apt-get install -y --no-install-recommends software-properties-common
     $SUDO add-apt-repository -y ppa:spotify-jyrki/dh-virtualenv
     $SUDO apt-get ${QUIET} update
-    $SUDO apt-get install -y --no-install-recommends build-essential libffi-dev libssl-dev debhelper dh-virtualenv
+    $SUDO apt-get install -y --no-install-recommends build-essential libffi-dev \
+	  libssl-dev debhelper dh-virtualenv fakeroot
 
     WEB_UI_BRANCH="master"
     SOURCE_DIR=$PWD
@@ -109,6 +110,8 @@ else
     # we need to move lbry into the build directory
 
     make-deb
+    export DH_UPGRADE_PIP=""
+    export DH_UPGRADE_SETUPTOOLS=""
     dpkg-buildpackage -us -uc
 
     ### insert our extra files

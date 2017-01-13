@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -o xtrace
+set -eu
 
 # Install and update pip, set up venv, and install brew/apt-get required stuff
 #
