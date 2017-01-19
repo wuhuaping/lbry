@@ -3,7 +3,6 @@ from lbrynet.core import log_support
 
 import argparse
 import collections
-import itertools
 import logging
 import os
 import random
@@ -11,32 +10,20 @@ import shutil
 import sys
 import tempfile
 
-import appdirs
 from twisted.internet import defer
 from twisted.internet import reactor
-from twisted.internet import protocol
-from twisted.internet import endpoints
 
 from lbrynet import analytics
 from lbrynet import conf
-from lbrynet.core import Error
 from lbrynet.core import Wallet
 from lbrynet.core import BlobAvailability
-from lbrynet.core import BlobManager
-from lbrynet.core import HashAnnouncer
-from lbrynet.core import PeerManager
 from lbrynet.core import Session
 from lbrynet.core import utils
-from lbrynet.core.client import DHTPeerFinder
-from lbrynet.dht import node
-from lbrynet.metadata import Metadata
-from lbrynet.core import StreamDescriptor as sd
 
 import common
 import name
 import pool
 import track
-
 
 log = logging.getLogger()
 
@@ -90,8 +77,8 @@ def run(args, session, api):
             session.blob_manager, session.peer_finder, session.dht_node)
 
         tracker = yield Tracker(session, names, blob_tracker)
-        yield tracker.processNameClaims(args.download)
-        event = makeEvent(tracker.stats)
+        yield tracker.process_name_claims(args.download)
+        event = make_event(tracker.stats)
         if args.download and not args.limit:
             api.track(event)
         else:
@@ -109,16 +96,16 @@ class Tracker(track.Tracker):
         self.blob_tracker = blob_tracker
 
     @defer.inlineCallbacks
-    def processNameClaims(self, download=False):
+    def process_name_claims(self, download=False):
         try:
-            yield self._getSdHashes()
-            yield self._filterNames('sd_hash')
-            yield self._checkAvailability()
-            yield self._filterNames('is_available')
+            yield self._get_sd_hashes()
+            yield self._filter_names('sd_hash')
+            yield self._check_availability()
+            yield self._filter_names('is_available')
             yield self.print_attempts_counter()
             if download:
-                yield self._downloadAllBlobs()
-                yield self._filterNames('sd_blob')
+                yield self._download_all_blobs()
+                yield self._filter_names('sd_blob')
         except Exception:
             log.exception('Something bad happened')
 
@@ -128,7 +115,7 @@ class Tracker(track.Tracker):
     def attempts_counter(self):
         return collections.Counter([n.availability_attempts for n in self.names])
 
-    def _checkAvailability(self):
+    def _check_availability(self):
         return pool.DeferredPool(
             (n.check_availability(self.blob_tracker) for n in self.names),
             10
@@ -138,6 +125,7 @@ class Tracker(track.Tracker):
 class Name(name.Name):
     # From experience, very few sd_blobs get found after the third attempt
     MAX_ATTEMPTS = 6
+
     def __init__(self, my_name):
         name.Name.__init__(self, my_name)
         self.is_available = None
@@ -147,7 +135,7 @@ class Name(name.Name):
     def _check_availability(self, blob_tracker):
         b = yield blob_tracker.get_blob_availability(self.sd_hash)
         peer_count = b[self.sd_hash]
-        self._setAvailable(peer_count)
+        self._set_available(peer_count)
 
     @defer.inlineCallbacks
     def check_availability(self, blob_tracker):
@@ -156,11 +144,11 @@ class Name(name.Name):
             log.info('Attempt %s to find %s', self.availability_attempts, self.name)
             yield self._check_availability(blob_tracker)
 
-    def _setAvailable(self, peer_count):
+    def _set_available(self, peer_count):
         self.is_available = peer_count > 0
 
 
-def makeEvent(stats):
+def make_event(stats):
     return {
         'userId': 'lbry',
         'event': 'Content Availability',
@@ -181,6 +169,7 @@ def makeEvent(stats):
         },
         'timestamp': utils.isonow()
     }
+
 
 if __name__ == '__main__':
     sys.exit(main())

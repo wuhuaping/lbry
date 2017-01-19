@@ -1,8 +1,6 @@
-import itertools
 import logging
 
 from twisted.internet import defer
-
 
 log = logging.getLogger(__name__)
 
@@ -17,8 +15,8 @@ class DeferredPool(defer.Deferred):
         self.total_count = None
         defer.Deferred.__init__(self)
 
-        for deferred in itertools.islice(deferred_iter, pool_size):
-            self._start_one(deferred)
+        while self.total_count is None and self.started_count <= self.pool_size:
+            self._process_next()
 
     def _start_one(self, deferred):
         deferred.addCallbacks(self._callback, self._callback,
@@ -35,7 +33,7 @@ class DeferredPool(defer.Deferred):
         return result
 
     def _done(self):
-        return self.total_count  == len(self.result_list)
+        return self.total_count == len(self.result_list)
 
     def _finish(self):
         result_list = [(s, r) for i, s, r in sorted(self.result_list)]

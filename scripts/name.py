@@ -18,12 +18,15 @@ class Name(object):
         self.sd_hash = None
         self.sd_blob = None
 
+    def __repr__(self):
+        return '{} ({})'.format(self.name, self.sd_hash if self.sd_hash else 'no sd hash')
+
     @defer.inlineCallbacks
-    def setSdHash(self, wallet):
+    def set_sd_hash(self, wallet):
         try:
             stream = yield wallet.get_stream_info_for_name(self.name)
             metadata = Metadata.Metadata(stream)
-            self.sd_hash = _getSdHash(metadata)
+            self.sd_hash = _get_sd_hash(metadata)
         except (Error.InvalidStreamInfoError, AssertionError):
             pass
         except Exception:
@@ -49,7 +52,8 @@ class Name(object):
     def _after_download(self, blob):
         pass
 
-def _getSdHash(metadata):
+
+def _get_sd_hash(metadata):
     return metadata['sources']['lbry_sd_hash']
 
 

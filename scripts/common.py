@@ -20,4 +20,5 @@ def getNameClaims(trie):
             try:
                 yield str(x['name'])
             except UnicodeError:
-                log.warning('Skippin name %s as it is not ascii', x['name'])
+                # log.warning('Skipping name %s as it is not ascii', x['name'])
+                pass

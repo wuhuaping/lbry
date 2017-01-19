@@ -2407,7 +2407,6 @@ class Daemon(AuthJSONRPCServer):
         return d
 
 
-
 def get_lbryum_version_from_github():
     return get_version_from_github('https://api.github.com/repos/lbryio/lbryum/releases/latest')
 

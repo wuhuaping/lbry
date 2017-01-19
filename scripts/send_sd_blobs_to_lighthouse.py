@@ -104,7 +104,7 @@ def run(session, destinations, names, limit):
         log.info('Processing %s names', len(names))
         names = [Name(n, session.blob_manager) for n in names]
         t = Tracker(session, destinations, names)
-        yield t.processNameClaims()
+        yield t.process_name_claims()
     except Exception:
         log.exception('Something bad happened')
     finally:
@@ -132,8 +132,8 @@ class Tracker(track.Tracker):
         return self.session.blob_manager
 
     @defer.inlineCallbacks
-    def processNameClaims(self):
-        yield super(Tracker, self).processNameClaims()
+    def process_name_claims(self):
+        yield super(Tracker, self).process_name_claims()
         log.info('Sending the blobs')
         yield self._sendSdBlobs()
 

@@ -2,7 +2,6 @@
 import argparse
 import logging
 import sys
-import tempfile
 
 from twisted.internet import defer
 from twisted.internet import reactor

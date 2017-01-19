@@ -40,8 +40,8 @@ class BlobAvailabilityTracker(object):
 
     def get_blob_availability(self, blob):
         def _get_peer_count(peers):
-            have_blob = sum(1 for peer in peers if peer.is_available())
-            return {blob: have_blob}
+            num_peers_that_have_blob = sum(1 for peer in peers if peer.is_available())
+            return {blob: num_peers_that_have_blob}
 
         d = self._peer_finder.find_peers_for_blob(blob)
         d.addCallback(_get_peer_count)
@@ -57,7 +57,6 @@ class BlobAvailabilityTracker(object):
     def last_mean_availability(self):
         return max(Decimal(0.01), self._last_mean_availability)
 
-
     def _update_peers_for_blob(self, blob):
         def _save_peer_info(blob_hash, peers):
             v = {blob_hash: peers}
@@ -71,8 +70,8 @@ class BlobAvailabilityTracker(object):
 
     def _get_most_popular(self):
         dl = []
-        for (hash, _) in self._dht_node.get_most_popular_hashes(100):
-            encoded = hash.encode('hex')
+        for (popular_hash, _) in self._dht_node.get_most_popular_hashes(100):
+            encoded = popular_hash.encode('hex')
             dl.append(self._update_peers_for_blob(encoded))
         return defer.DeferredList(dl)
 
@@ -83,8 +82,8 @@ class BlobAvailabilityTracker(object):
     def _update_mine(self):
         def _get_peers(blobs):
             dl = []
-            for hash in blobs:
-                dl.append(self._update_peers_for_blob(hash))
+            for blob_hash in blobs:
+                dl.append(self._update_peers_for_blob(blob_hash))
             return defer.DeferredList(dl)
 
         def sample(blobs):
