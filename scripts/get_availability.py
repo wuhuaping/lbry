@@ -21,8 +21,6 @@ from lbrynet.core import StreamDescriptor
 
 import common
 import name
-import pool
-import track
 
 log = logging.getLogger()
 
@@ -135,37 +133,6 @@ class AvailabilityGetter(object):
 
         except Exception:
             log.exception('Something bad happened')
-
-
-
-
-
-
-
-
-class Tracker(track.Tracker):
-    def __init__(self, session, names, blob_tracker):
-        track.Tracker.__init__(self, session, names)
-        self.blob_tracker = blob_tracker
-
-    @defer.inlineCallbacks
-    def process_name_claims(self):
-        try:
-            log.warn('NAMES: ' + ', '.join([n.name for n in self.names]))
-            yield self._get_sd_hashes()
-            yield self._filter_names('sd_hash', quiet=True)
-            log.warn('SD HASHES EXIST FOR: ' + ', '.join([n.name for n in self.names]))
-            yield self._check_availability()
-            yield self._filter_names('is_available', quiet=True)
-            log.warn('AVAILABLE NAMES: ' + ', '.join([n.name for n in self.names]))
-        except Exception:
-            log.exception('Something bad happened')
-
-    def _check_availability(self):
-        return pool.DeferredPool(
-            (n.check_availability(self.blob_tracker) for n in self.names),
-            10
-        )
 
 
 class Name(name.Name):
