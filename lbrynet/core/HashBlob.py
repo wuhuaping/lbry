@@ -244,6 +244,9 @@ class BlobFile(HashBlob):
                 return file_handle
             except IOError:
                 self.close_read_handle(file_handle)
+                raise
+        else:
+            print "Blob is not verified"
         return None
 
     def delete(self):
