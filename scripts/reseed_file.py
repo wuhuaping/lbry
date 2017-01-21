@@ -61,6 +61,13 @@ def reseed_file(input_file, sd_blob):
     with open(input_file) as f:
         yield file_sender.beginFileTransfer(f, creator)
         yield creator.stop()
+    for blob_info in sd_blob.blob_infos():
+        if 'blob_hash' not in blob_info:
+            # the last blob is always empty and without a hash
+            continue
+        blob = yield blob_manager.get_blob(blob_info['blob_hash'], True)
+        if not blob.verified:
+            print "Blob {} is not verified".format(blob)
 
 
 class SdBlob(object):
@@ -68,12 +75,14 @@ class SdBlob(object):
         self.contents = contents
 
     def key(self):
-        return self.contents['key']
+        return binascii.unhexlify(self.contents['key'])
 
     def iv_generator(self):
-        for blob_info in self.contents['blobs']:
-            print blob_info['iv']
+        for blob_info in self.blob_infos():
             yield binascii.unhexlify(blob_info['iv'])
+
+    def blob_infos(self):
+        return self.contents['blobs']
 
     @classmethod
     def new_instance(cls, filename):

@@ -1,3 +1,4 @@
+"""Decrypt a single blob"""
 import argparse
 import binascii
 import logging
@@ -22,7 +23,6 @@ def main():
     parser.add_argument('blob_file')
     parser.add_argument('hex_key')
     parser.add_argument('hex_iv')
-    parser.add_argument('length', type=int)
     parser.add_argument('output')
     args = parser.parse_args()
     log_support.configure_console()
@@ -34,7 +34,7 @@ def main():
 @defer.inlineCallbacks
 def run(args):
     try:
-        yield decrypt_blob(args.blob_file, args.hex_key, args.hex_iv, args.length, args.output)
+        yield decrypt_blob(args.blob_file, args.hex_key, args.hex_iv, args.output)
     except Exception:
         log.exception('Failed to decrypt blob')
     finally:
@@ -42,8 +42,9 @@ def run(args):
 
 
 @defer.inlineCallbacks
-def decrypt_blob(blob_file, key, iv, length, output):
+def decrypt_blob(blob_file, key, iv, output):
     filename = os.path.abspath(blob_file)
+    length = os.path.getsize(filename)
     directory, blob_hash = os.path.split(filename)
     blob = HashBlob.BlobFile(directory, blob_hash, True, length)
     decryptor = CryptBlob.StreamBlobDecryptor(
