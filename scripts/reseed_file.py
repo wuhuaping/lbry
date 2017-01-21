@@ -50,7 +50,7 @@ def run(args):
 @defer.inlineCallbacks
 def reseed_file(input_file, sd_blob):
     sd_blob = SdBlob.new_instance(sd_blob)
-    db_dir = '/home/jobevers/tmp' #conf.settings['data_dir']
+    db_dir = conf.settings['data_dir']
     blobfile_dir = os.path.join(db_dir, "blobfiles")
     announcer = HashAnnouncer.DummyHashAnnouncer()
     blob_manager = BlobManager.DiskBlobManager(announcer, blobfile_dir, db_dir)

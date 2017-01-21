@@ -243,10 +243,8 @@ class BlobFile(HashBlob):
                 self.readers += 1
                 return file_handle
             except IOError:
+                log.exception('Failed to open %s', self.file_path)
                 self.close_read_handle(file_handle)
-                raise
-        else:
-            print "Blob is not verified"
         return None
 
     def delete(self):
@@ -362,12 +360,10 @@ class HashBlobCreator(object):
 
     def close(self):
         self.length = self.len_so_far
-        print self.len_so_far
         if self.length == 0:
             self.blob_hash = None
         else:
             self.blob_hash = self._hashsum.hexdigest()
-        print 'Blob hash:', self.blob_hash
         d = self._close()
         if self.blob_hash is not None:
             d.addCallback(lambda _: self.blob_manager.creator_finished(self))
@@ -395,17 +391,14 @@ class BlobFileCreator(HashBlobCreator):
         self.out_file = tempfile.NamedTemporaryFile(delete=False, dir=self.blob_dir)
 
     def _close(self):
-        print "File is being closed"
         temp_file_name = self.out_file.name
         self.out_file.close()
 
         def change_file_name():
-            print "Moving to ", os.path.join(self.blob_dir, self.blob_hash)
             shutil.move(temp_file_name, os.path.join(self.blob_dir, self.blob_hash))
             return True
 
         if self.blob_hash is not None:
-            print 'Will change the name'
             d = threads.deferToThread(change_file_name)
         else:
             d = defer.succeed(True)
