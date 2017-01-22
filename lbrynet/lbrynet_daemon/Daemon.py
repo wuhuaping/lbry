@@ -47,7 +47,7 @@ from lbrynet.core.Wallet import LBRYumWallet, SqliteStorage
 from lbrynet.core.looping_call_manager import LoopingCallManager
 from lbrynet.core.server.BlobRequestHandler import BlobRequestHandlerFactory
 from lbrynet.core.server.ServerProtocol import ServerProtocolFactory
-from lbrynet.core.Error import InsufficientFundsError
+from lbrynet.core.Error import InsufficientFundsError, UnknownNameError
 
 log = logging.getLogger(__name__)
 
@@ -909,16 +909,15 @@ class Daemon(AuthJSONRPCServer):
             return 0.0
         return size / (10 ** 6) * conf.settings['data_rate']
 
+    @defer.inlineCallbacks
     def get_est_cost_using_known_size(self, name, size):
         """
         Calculate estimated LBC cost for a stream given its size in bytes
         """
-
         cost = self._get_est_cost_from_stream_size(size)
-
-        d = self._resolve_name(name)
-        d.addCallback(lambda metadata: self._add_key_fee_to_est_data_cost(metadata, cost))
-        return d
+        metadata = yield self._resolve_name(name)
+        total_cost = yield self._add_key_fee_to_est_data_cost(metadata, cost)
+        defer.returnValue(total_cost)
 
     def get_est_cost_from_sd_hash(self, sd_hash):
         """
@@ -949,24 +948,28 @@ class Daemon(AuthJSONRPCServer):
         fee_amount = 0.0 if fee is None else fee.amount
         return data_cost + fee_amount
 
+    @defer.inlineCallbacks
     def get_est_cost_from_name(self, name):
-        """
-        Resolve a name and return the estimated stream cost
-        """
+        """Resolve a name and return the estimated stream cost."""
+        metadata = yield self._resolve_name(name)
+        cost = yield self._get_est_cost_from_metadata(metadata, name)
+        defer.returnValue(cost)
 
-        d = self._resolve_name(name)
-        d.addCallback(self._get_est_cost_from_metadata, name)
-        return d
-
+    @defer.inlineCallbacks
     def get_est_cost(self, name, size=None):
         """Get a cost estimate for a lbry stream, if size is not provided the
         sd blob will be downloaded to determine the stream size
 
         """
-
-        if size is not None:
-            return self.get_est_cost_using_known_size(name, size)
-        return self.get_est_cost_from_name(name)
+        try:
+            if size is not None:
+                cost = yield self.get_est_cost_using_known_size(name, size)
+            else:
+                cost = yield self.get_est_cost_from_name(name)
+            defer.returnValue(cost)
+        except UnknownNameError:
+            log.warning('Name %s is unknown', name)
+            defer.returnValue(0)
 
     def _get_lbry_file_by_uri(self, name):
         def _get_file(stream_info):
