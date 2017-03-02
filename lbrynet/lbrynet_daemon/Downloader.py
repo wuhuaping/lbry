@@ -156,7 +156,7 @@ class GetStream(object):
         defer.returnValue(self.download_path)
 
     @defer.inlineCallbacks
-    def download(self, stream_info, name):
+    def download(self, stream_info, name, txid, nout):
         self.set_status(INITIALIZING_CODE, name)
         self.sd_hash = stream_info['sources']['lbry_sd_hash']
         if 'fee' in stream_info:
@@ -169,7 +169,8 @@ class GetStream(object):
         stream_metadata = yield self.sd_identifier.get_metadata_for_sd_blob(sd_blob)
         factory = self.get_downloader_factory(stream_metadata.factories)
         self.downloader = yield self.get_downloader(factory, stream_metadata)
-
+        yield self.downloader.set_claim(name, txid, nout)
+        yield self.downloader.load_file_attributes()
         self.set_status(DOWNLOAD_RUNNING_CODE, name)
         if fee:
             yield self.pay_key_fee(fee, name)
@@ -179,11 +180,11 @@ class GetStream(object):
         yield self.data_downloading_deferred
 
     @defer.inlineCallbacks
-    def start(self, stream_info, name):
+    def start(self, stream_info, name, txid, nout):
         try:
             safe_start(self.checker)
-            yield self.download(stream_info, name)
-            defer.returnValue(self.download_path)
+            yield self.download(stream_info, name, txid, nout)
+            defer.returnValue(self.downloader)
         except Exception as err:
             safe_stop(self.checker)
             raise err
