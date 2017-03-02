@@ -6,6 +6,7 @@ from twisted.protocols.basic import FileSender
 from twisted.internet.protocol import Protocol, ClientFactory
 from twisted.internet import defer, error
 
+from lbrynet.core.HashBlob import HashBlob
 from lbrynet.reflector.common import IncompleteResponse, ReflectorRequestError
 from lbrynet.reflector.common import REFLECTOR_V1, REFLECTOR_V2
 
@@ -166,7 +167,12 @@ class EncryptedFileReflectorClient(Protocol):
             raise IncompleteResponse()
 
     def response_failure_handler(self, err):
-        log.warning("An error occurred handling the response: %s", err.getTraceback())
+        if err.check(AttributeError):
+            log.warning("Failed to reflect %s (%s), descriptor is not readable", self.lbry_uri,
+                        self.stream_descriptor)
+            self.transport.loseConnection()
+        else:
+            log.warning("An error occurred handling the response: %s", err.getTraceback())
 
     def handle_response(self, response_dict):
         if not self.received_server_version:
@@ -253,15 +259,19 @@ class EncryptedFileReflectorClient(Protocol):
                 return self.set_not_uploading()
 
     def open_blob_for_reading(self, blob):
-        if blob.is_validated():
-            read_handle = blob.open_for_reading()
-            if read_handle is not None:
-                log.debug('Getting ready to send %s', blob.blob_hash)
-                self.next_blob_to_send = blob
-                self.read_handle = read_handle
-                return defer.succeed(None)
-        return defer.fail(ValueError(
-            "Couldn't open that blob for some reason. blob_hash: {}".format(blob.blob_hash)))
+        if isinstance(blob, HashBlob):
+            if blob.is_validated():
+                read_handle = blob.open_for_reading()
+                if read_handle is not None:
+                    log.debug('Getting ready to send %s', blob.blob_hash)
+                    self.next_blob_to_send = blob
+                    self.read_handle = read_handle
+                    return defer.succeed(None)
+
+            return defer.fail(ValueError(
+                "Couldn't open that blob for some reason. blob_hash: {}".format(blob.blob_hash)))
+        return defer.fail(ValueError("%s is not a blob file" % blob))
+
 
     def send_blob_info(self):
         assert self.next_blob_to_send is not None, "need to have a next blob to send at this point"
@@ -301,6 +311,7 @@ class EncryptedFileReflectorClient(Protocol):
             d = self.open_blob_for_reading(blob)
             d.addCallbacks(lambda _: self.send_descriptor_info(),
                            lambda err: self.skip_missing_blob(err, blob.blob_hash))
+
             return d
         elif self.blob_hashes_to_send:
             # open the next blob to send
@@ -336,7 +347,7 @@ class EncryptedFileReflectorClientFactory(ClientFactory):
 
     @property
     def lbry_uri(self):
-        return self._lbry_file.uri
+        return self._lbry_file.name
 
     @property
     def protocol_version(self):
