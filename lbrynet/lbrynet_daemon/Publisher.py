@@ -63,8 +63,7 @@ class Publisher(object):
 
     @defer.inlineCallbacks
     def make_claim(self, name, bid, metadata):
-        validated_metadata = Metadata(metadata)
-        claim_out = yield self.wallet.claim_name(name, bid, validated_metadata)
+        claim_out = yield self.wallet.claim_name(name, bid, metadata)
         defer.returnValue(claim_out)
 
 
