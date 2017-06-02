@@ -15,8 +15,14 @@ at anytime.
 ### Changed
   * Do not catch base exception in API command resolve
   * Remove deprecated `lbrynet.metadata` and update what used it to instead use `lbryschema`
-  *
+  * Positional and flag arguments in lbrynet-cli
+  * Add `claims_in_channel_list`, supports multiple channel resolution
 
+### Changed
+  * Changed keyword arguments in lbrynet-cli to use a -- prefix
+  * Using the help function in lbrynet-cli no longer requires lbrynet-daemon to be running
+  * `resolve` multiple uris, remove `claims_in_channel` from `resolve` response
+  
 ### Fixed
   * Download analytics error
   *
