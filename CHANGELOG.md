@@ -18,7 +18,7 @@ at anytime.
   *
 
 ### Fixed
-  *
+  * Fixed flag options in file_delete API command
   *
 
 ### Deprecated
